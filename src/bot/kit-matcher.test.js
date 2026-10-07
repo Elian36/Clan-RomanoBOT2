@@ -43,6 +43,17 @@ test('recognizes the full m.h kit del C.R honorable label', () => {
   }), undefined);
 });
 
+test('ignores Minecraft color codes when matching kit names', () => {
+  assert.equal(kitRoleForItem({
+    name: 'purple_shulker_box',
+    customName: '{"text":"§6Lideres kit del C.R","bold":true}'
+  }), 'lider');
+  assert.equal(kitRoleForItem({
+    name: 'red_shulker_box',
+    customName: '§cM.H kit del C.R'
+  }), 'miembro_honorable');
+});
+
 test('matches colored shulker item identifiers independently of inventory location', () => {
   assert.equal(kitRoleForItem({
     name: 'light_blue_shulker_box',
@@ -80,6 +91,7 @@ test('counts carried shulkers by their role and reports unclassified shulkers', 
 
   assert.deepEqual(stock, {
     counts: { lider: 1, miembro_honorable: 1, miembro: 2 },
-    unidentified: [{ label: 'Otra caja', count: 1 }]
+    unidentified: [{ label: 'Otra caja', count: 1 }],
+    totalShulkers: 5
   });
 });

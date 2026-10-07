@@ -7,7 +7,10 @@ const ROLE_LABELS = Object.freeze({
 const SHULKER_PATTERN = /(?:^|_)shulker_box$/;
 
 function normalizedText(value) {
-  return value.normalize('NFD')
+  return value
+    .replace(/§[0-9a-fk-orx]/gi, '')
+    .replace(/&[0-9a-fk-orx]/gi, '')
+    .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
@@ -46,19 +49,21 @@ export function kitRoleForItem(item) {
 }
 
 export function shulkerLabel(item) {
-  return item.displayName ?? item.customName ?? item.name;
+  return item.customName ?? item.displayName ?? item.name;
 }
 
 export function countKitItems(items) {
   const counts = Object.fromEntries(Object.keys(ROLE_LABELS).map((role) => [role, 0]));
   const unidentified = [];
+  let totalShulkers = 0;
   for (const item of items) {
     if (!isShulker(item)) {
       continue;
     }
+    totalShulkers += item.count ?? 1;
     const role = kitRoleForItem(item);
     if (role) counts[role] += item.count ?? 1;
     else unidentified.push({ label: shulkerLabel(item), count: item.count ?? 1 });
   }
-  return { counts, unidentified };
+  return { counts, unidentified, totalShulkers };
 }

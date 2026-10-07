@@ -111,11 +111,14 @@ async function executeCommand(bot, username, message, onStop) {
         return;
       }
       await returnHome(bot);
-      const { counts, unidentified } = await countKits(bot);
+      const { counts, unidentified, totalShulkers, carriedShulkers, enderChestShulkers, enderChestSlots } = await countKits(bot);
       const unrecognized = unidentified.length
         ? ` Sin clasificar: ${unidentified.slice(0, 3).map(({ label, count }) => `${label} x${count}`).join(', ')}.`
         : '';
-      tell(bot, username, `Stock: lider ${counts.lider}, miembro_honorable ${counts.miembro_honorable}, miembro ${counts.miembro}.${unrecognized}`);
+      const scanDetails = totalShulkers === 0
+        ? ` No encontré shulkers; revisé ${carriedShulkers} en inventario y ${enderChestSlots} slots del Ender Chest (${enderChestShulkers} shulkers).`
+        : ` Total: ${totalShulkers} shulkers (${carriedShulkers} en inventario, ${enderChestShulkers} en Ender Chest).`;
+      tell(bot, username, `Stock: lider ${counts.lider}, miembro_honorable ${counts.miembro_honorable}, miembro ${counts.miembro}.${unrecognized}${scanDetails}`);
       return;
     }
     case 'sethome':

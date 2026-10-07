@@ -116,7 +116,12 @@ export async function countKits(bot) {
   return withEnderChest(bot, (window) => {
     const carriedItems = bot.inventory.items();
     const storedItems = containerItems(window).map(({ item }) => item);
-    return countKitItems([...carriedItems, ...storedItems]);
+    return {
+      ...countKitItems([...carriedItems, ...storedItems]),
+      carriedShulkers: countKitItems(carriedItems).totalShulkers,
+      enderChestShulkers: countKitItems(storedItems).totalShulkers,
+      enderChestSlots: window.inventoryStart ?? storedItems.length
+    };
   });
 }
 
