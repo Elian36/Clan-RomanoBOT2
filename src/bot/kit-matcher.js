@@ -1,13 +1,17 @@
 const ROLE_LABELS = Object.freeze({
-  miembro_honorable: ['miembro honorable', 'miembro_honorable', 'honorable', 'honored', 'honoured', 'honor'],
-  lider: ['lider', 'leader'],
-  miembro: ['miembro', 'member']
+  miembro_honorable: ['mh', 'm h', 'miembro honorable', 'honorable'],
+  miembro: ['miembro lideres kit del c r', 'miembro kit del c r', 'miembro', 'member'],
+  lider: ['lideres kit del c r', 'lider', 'leader']
 });
 
 const SHULKER_PATTERN = /(?:^|_)shulker_box$/;
 
 function normalizedText(value) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return value.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function itemDescription(item) {
@@ -21,8 +25,7 @@ function itemDescription(item) {
 
 function hasLabel(description, label) {
   const normalizedLabel = normalizedText(label);
-  const escapedLabel = normalizedLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?:^|[^a-z0-9])${escapedLabel}(?:$|[^a-z0-9])`).test(description);
+  return ` ${description} `.includes(` ${normalizedLabel} `);
 }
 
 export function isShulker(item) {
