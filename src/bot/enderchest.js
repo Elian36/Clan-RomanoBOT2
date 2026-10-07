@@ -62,20 +62,20 @@ function containerItems(window) {
   return window.slots.slice(0, end).flatMap((item, slot) => item ? [{ item, slot }] : []);
 }
 
-function findAddedInventoryItem(bot, before, sourceItem) {
-  const key = JSON.stringify(sourceItem.nbt ?? {});
-  const signature = `${sourceItem.type}:${key}`;
-  const previousCount = before.get(signature) ?? 0;
-  const currentCount = bot.inventory.items()
-    .filter((item) => item.type === sourceItem.type && JSON.stringify(item.nbt ?? {}) === key)
-    .reduce((total, item) => total + item.count, 0);
-  if (currentCount <= previousCount) {
-    return undefined;
+function findCarriedKit(bot, role) {
+  return bot.inventory.items().find((item) => kitRoleForItem(item) === role);
+}
+
+async function waitForCarriedKit(bot, role) {
+  const deadline = Date.now() + 5000;
+  let item;
+  while (!item && Date.now() < deadline) {
+    item = findCarriedKit(bot, role);
+    if (!item) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
   }
-  return bot.inventory.items().find((item) => {
-    const itemKey = JSON.stringify(item.nbt ?? {});
-    return item.type === sourceItem.type && itemKey === key;
-  });
+  return item;
 }
 
 async function moveNearPlayer(bot, username) {
@@ -126,9 +126,7 @@ export async function countKits(bot) {
 }
 
 export async function prepareKit(bot, role) {
-  let selectedItem;
-  let inventoryBefore;
-  const carriedKit = bot.inventory.items().find((item) => kitRoleForItem(item) === role);
+  const carriedKit = findCarriedKit(bot, role);
   if (carriedKit) {
     return carriedKit;
   }
@@ -142,18 +140,16 @@ export async function prepareKit(bot, role) {
       throw new Error(`No se encontró una shulker identificada para el rol ${role}.${details}`);
     }
 
-    inventoryBefore = new Map();
-    for (const item of bot.inventory.items()) {
-      const signature = `${item.type}:${JSON.stringify(item.nbt ?? {})}`;
-      inventoryBefore.set(signature, (inventoryBefore.get(signature) ?? 0) + item.count);
-    }
-    selectedItem = candidate.item;
     await bot.clickWindow(candidate.slot, 0, 0);
   });
 
-  const inventoryItem = findAddedInventoryItem(bot, inventoryBefore, selectedItem);
+  const inventoryItem = await waitForCarriedKit(bot, role);
   if (!inventoryItem) {
-    throw new Error('No se pudo mover el kit del Ender Chest al inventario.');
+    const carriedShulkers = bot.inventory.items()
+      .filter((item) => isShulker(item))
+      .map((item) => shulkerLabel(item));
+    const details = carriedShulkers.length ? ` Shulkers en inventario: ${carriedShulkers.join(', ')}.` : '';
+    throw new Error(`Se hizo clic en la shulker, pero el inventario no confirmó una caja del rol ${role}.${details}`);
   }
   return inventoryItem;
 }
