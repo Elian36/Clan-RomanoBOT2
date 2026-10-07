@@ -91,6 +91,29 @@ async function moveNearPlayer(bot, username) {
   await bot.pathfinder.goto(new goals.GoalNear(target.position.x, target.position.y, target.position.z, 2));
 }
 
+function countCarriedKits(bot, role) {
+  return bot.inventory.items()
+    .filter((item) => kitRoleForItem(item) === role)
+    .reduce((count, item) => count + item.count, 0);
+}
+
+async function waitForKitDrop(bot, role, expectedCount) {
+  const deadline = Date.now() + 5000;
+  let countReachedAt;
+  while (Date.now() < deadline) {
+    if (countCarriedKits(bot, role) <= expectedCount) {
+      countReachedAt ??= Date.now();
+      if (Date.now() - countReachedAt >= 500) {
+        return;
+      }
+    } else {
+      countReachedAt = undefined;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error('El servidor no confirmó que la shulker saliera del inventario; no se confirmó la entrega.');
+}
+
 export async function withEnderChest(bot, action) {
   const previousOperation = enderChestQueue;
   let release;
@@ -154,7 +177,13 @@ export async function prepareKit(bot, role) {
   return inventoryItem;
 }
 
-export async function deliverKit(bot, username, item) {
+export async function deliverKit(bot, username, role) {
   await moveNearPlayer(bot, username);
+  const item = findCarriedKit(bot, role);
+  if (!item) {
+    throw new Error(`El bot llegó junto a ${username}, pero ya no tiene la shulker de rol ${role} en el inventario.`);
+  }
+  const countBeforeDrop = countCarriedKits(bot, role);
   await bot.tossStack(item);
+  await waitForKitDrop(bot, role, countBeforeDrop - item.count);
 }

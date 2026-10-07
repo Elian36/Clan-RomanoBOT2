@@ -63,6 +63,7 @@ Roles: `lider`, `miembro_honorable`, `miembro`.
 - `%stock` cuenta las shulkers que el bot lleva en su inventario y las que siguen dentro del Ender Chest; ignora códigos de color de Minecraft y muestra los nombres sin clasificar y el número de slots revisados para ayudar a diagnosticar problemas.
 - `%kit` usa primero una shulker del rol correspondiente que el bot ya lleva; si no tiene una, la busca y la retira del Ender Chest.
 - `%kit` mueve una caja coincidente al inventario, envía `/tpa <usuario>`, espera un mensaje del servidor que indique aceptación, se acerca al jugador y arroja la caja.
+- Tras confirmar que la shulker salió del inventario, vuelve a `/home aa`. Si la entrega ocurrió a menos de 20.000 bloques horizontales del spawn, envía las coordenadas por privado a los líderes registrados que estén conectados. Si no hay ninguno, ejecuta `/kill` y, si el servidor muestra un mensaje de confirmación que coincide con `KILL_CONFIRM_REGEX`, envía `KILL_CONFIRM_COMMAND` (por defecto `/kill confirm`) para respawnear en la cama. Ajusta esas variables al texto y comando de confirmación que use el servidor.
 - Coloca el bot junto al Ender Chest y ejecuta `%sethome` para fijar `aa`. Antes de revisar stock o retirar kits, volverá con `/home aa`; asegúrate de tener el Ender Chest a 32 bloques o menos de esa ubicación.
 - Los textos de aceptación de TPA varían entre servidores. Ajusta `TPA_ACCEPT_REGEX` en `.env` al mensaje real del servidor (debe incluir el username del jugador y el texto de aceptación) y `TPA_TIMEOUT_MS` al tiempo de espera deseado. Si la expresión no coincide, el bot no arroja el kit y el comando informa que expiró.
 - No se detecta aceptación solo porque el jugador se teletransporte; se requiere que el servidor emita texto coincidente con la expresión configurada.
@@ -70,7 +71,7 @@ Roles: `lider`, `miembro_honorable`, `miembro`.
 
 ## Configuración opcional
 
-El bot mueve la cabeza cada 60 segundos para mantenerse activo. Configura `ANTI_AFK_INTERVAL_MS` para ajustar el intervalo (mínimo 10000 ms). `HOME_COMMAND_DELAY_MS` controla cuánto espera tras `/home aa` antes de abrir el Ender Chest (por defecto 5000 ms). También están documentados `MINECRAFT_HOST`, `MINECRAFT_PORT`, `MINECRAFT_VERSION`, `RECONNECT_DELAY_MS`, `TPA_TIMEOUT_MS` y `TPA_ACCEPT_REGEX` en `.env.example`. Si se omite `MINECRAFT_VERSION`, Mineflayer intenta detectar la versión.
+El bot mueve la cabeza cada 60 segundos para mantenerse activo. Configura `ANTI_AFK_INTERVAL_MS` para ajustar el intervalo (mínimo 10000 ms). `HOME_COMMAND_DELAY_MS` controla cuánto espera tras `/home aa` antes de abrir el Ender Chest (por defecto 5000 ms). `SPAWN_X` y `SPAWN_Z` definen las coordenadas X/Z del spawn para la comprobación de distancia (por defecto 0, 0). `KILL_CONFIRM_REGEX` y `KILL_CONFIRM_COMMAND` configuran la aceptación del respawn alternativo. También están documentados `MINECRAFT_HOST`, `MINECRAFT_PORT`, `MINECRAFT_VERSION`, `RECONNECT_DELAY_MS`, `TPA_TIMEOUT_MS` y `TPA_ACCEPT_REGEX` en `.env.example`. Si se omite `MINECRAFT_VERSION`, Mineflayer intenta detectar la versión.
 
 ## Desplegar el bot en Railway
 

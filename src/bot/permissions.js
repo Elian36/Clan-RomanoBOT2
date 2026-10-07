@@ -32,6 +32,18 @@ export async function getUser(username) {
   return queryUser(username);
 }
 
+export async function getLeaders() {
+  const { data, error } = await supabase
+    .from('users')
+    .select('username')
+    .eq('role', 'lider');
+
+  if (error) {
+    throw new Error(`No se pudieron consultar los líderes: ${error.message}`);
+  }
+  return data;
+}
+
 export async function addUser(username, role) {
   validateUsername(username);
   validateRole(role);
