@@ -20,7 +20,6 @@ if (!Number.isFinite(reconnectDelay) || reconnectDelay < 1000) {
 }
 
 let reconnectTimer;
-let stoppedKeepAlive;
 let stopping = false;
 
 function readAntiAfkInterval() {
@@ -49,6 +48,7 @@ function createBot() {
 
   const bot = mineflayer.createBot(options);
   let antiAfkTimer;
+  let connectionConflict = false;
   bot.loadPlugin(pathfinder);
   bot.once('login', () => console.log(`Conectado a ${options.host}:${options.port} como ${bot.username}.`));
   bot.once('spawn', () => {
@@ -79,11 +79,25 @@ function createBot() {
       stoppedKeepAlive = setInterval(() => {}, 60000);
     });
   });
-  bot.on('kicked', (reason) => console.error('El servidor expulsó al bot:', reason));
+  bot.on('kicked', (reason) => {
+    const kickMessage = typeof reason === 'string' ? reason : JSON.stringify(reason);
+    if (/already connected|already logged in|already online/i.test(kickMessage)) {
+      connectionConflict = true;
+      console.error('El servidor rechazó esta sesión porque la cuenta ya está conectada. Se detienen los reintentos para evitar saturar los logs. Cierra la otra instancia y reinicia este servicio.');
+      return;
+    }
+    console.error('El servidor expulsó al bot:', reason);
+  });
   bot.on('error', (error) => console.error('Error de Mineflayer:', error));
   bot.once('end', (reason) => {
     clearInterval(antiAfkTimer);
     console.warn(`Conexión finalizada: ${reason ?? 'sin motivo informado'}`);
+    if (connectionConflict) {
+      stopping = true;
+      clearTimeout(reconnectTimer);
+      setInterval(() => {}, 60000);
+      return;
+    }
     if (!stopping) {
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(createBot, reconnectDelay);

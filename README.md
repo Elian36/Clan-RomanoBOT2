@@ -81,6 +81,8 @@ Supabase aloja la base de datos, no un proceso Mineflayer persistente. Para mant
 
 Las variables de Railway son privadas; nunca pongas credenciales en el repositorio o en la configuración pública. Mantén un solo servicio conectado con esta cuenta de Minecraft para evitar sesiones duplicadas. Railway requiere una cuenta/servicio con disponibilidad de ejecución continua según sus condiciones y plan vigentes.
 
+Si los logs muestran `already connected to this proxy`, detén cualquier proceso local y revisa que Railway tenga una sola réplica del servicio. El bot ahora detiene los reintentos cuando detecta ese rechazo para no generar un ciclo de logs; cierra la otra sesión y reinicia el deployment de Railway.
+
 ## Inicializar Git y publicar en GitHub
 
 En la carpeta del proyecto, configura tu identidad de Git si todavía no lo hiciste. No incluyas `.env` en el commit.
