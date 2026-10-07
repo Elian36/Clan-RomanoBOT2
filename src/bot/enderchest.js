@@ -1,32 +1,10 @@
 import pathfinderPlugin from 'mineflayer-pathfinder';
 import { ROLES } from './permissions.js';
+import { kitRoleForItem, isShulker, shulkerLabel } from './kit-matcher.js';
 
 const { goals } = pathfinderPlugin;
 
-const SHULKER_PATTERN = /(?:^|_)shulker_box$/;
-const ROLE_LABELS = Object.freeze({
-  lider: ['lider', 'líder', 'leader'],
-  miembro_honorable: ['honorable', 'honor', 'honoured', 'honored'],
-  miembro: ['miembro', 'member']
-});
-
 let enderChestQueue = Promise.resolve();
-
-function itemDescription(item) {
-  return `${item.name} ${item.displayName ?? ''} ${JSON.stringify(item.nbt ?? {})}`
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
-function isKitForRole(item, role) {
-  if (!SHULKER_PATTERN.test(item.name)) {
-    return false;
-  }
-  const description = itemDescription(item);
-  const hasKitLabel = /\bkit\b/.test(description);
-  return hasKitLabel && ROLE_LABELS[role].some((label) => description.includes(label));
-}
 
 function findEnderChest(bot) {
   const block = bot.findBlock({
@@ -137,15 +115,16 @@ export async function withEnderChest(bot, action) {
 export async function countKits(bot) {
   return withEnderChest(bot, (window) => {
     const counts = Object.fromEntries(ROLES.map((role) => [role, 0]));
+    const unidentified = [];
     for (const { item } of containerItems(window)) {
-      for (const role of ROLES) {
-        if (isKitForRole(item, role)) {
-          counts[role] += item.count;
-          break;
-        }
+      if (!isShulker(item)) {
+        continue;
       }
+      const role = kitRoleForItem(item);
+      if (role) counts[role] += item.count;
+      else unidentified.push({ label: shulkerLabel(item), count: item.count });
     }
-    return counts;
+    return { counts, unidentified };
   });
 }
 
@@ -154,9 +133,12 @@ export async function prepareKit(bot, role) {
   let inventoryBefore;
 
   await withEnderChest(bot, async (window) => {
-    const candidate = containerItems(window).find(({ item }) => isKitForRole(item, role));
+    const items = containerItems(window);
+    const candidate = items.find(({ item }) => kitRoleForItem(item) === role);
     if (!candidate) {
-      throw new Error(`No quedan kits para el rol ${role}.`);
+      const shulkers = items.filter(({ item }) => isShulker(item)).map(({ item }) => shulkerLabel(item));
+      const details = shulkers.length ? ` Shulkers encontradas: ${shulkers.join(', ')}.` : '';
+      throw new Error(`No se encontró una shulker identificada para el rol ${role}.${details}`);
     }
 
     inventoryBefore = new Map();

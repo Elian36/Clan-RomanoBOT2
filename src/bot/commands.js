@@ -111,8 +111,11 @@ async function executeCommand(bot, username, message, onStop) {
         return;
       }
       await returnHome(bot);
-      const counts = await countKits(bot);
-      tell(bot, username, `Stock: lider ${counts.lider}, miembro_honorable ${counts.miembro_honorable}, miembro ${counts.miembro}.`);
+      const { counts, unidentified } = await countKits(bot);
+      const unrecognized = unidentified.length
+        ? ` Sin clasificar: ${unidentified.slice(0, 3).map(({ label, count }) => `${label} x${count}`).join(', ')}.`
+        : '';
+      tell(bot, username, `Stock: lider ${counts.lider}, miembro_honorable ${counts.miembro_honorable}, miembro ${counts.miembro}.${unrecognized}`);
       return;
     }
     case 'sethome':
