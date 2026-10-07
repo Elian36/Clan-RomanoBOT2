@@ -1,8 +1,5 @@
-import pathfinderPlugin from 'mineflayer-pathfinder';
 import { ROLES } from './permissions.js';
 import { countKitItems, kitRoleForItem, isShulker, shulkerLabel } from './kit-matcher.js';
-
-const { goals } = pathfinderPlugin;
 
 let enderChestQueue = Promise.resolve();
 
@@ -76,19 +73,6 @@ async function waitForCarriedKit(bot, role) {
     }
   }
   return item;
-}
-
-async function moveNearPlayer(bot, username) {
-  const deadline = Date.now() + 15000;
-  let target = bot.players[username]?.entity;
-  while (!target && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    target = bot.players[username]?.entity;
-  }
-  if (!target) {
-    throw new Error(`No se encontró a ${username} cerca después de aceptar el TPA.`);
-  }
-  await bot.pathfinder.goto(new goals.GoalNear(target.position.x, target.position.y, target.position.z, 2));
 }
 
 function countCarriedKits(bot, role) {
@@ -182,12 +166,12 @@ export async function prepareKit(bot, role) {
 }
 
 export async function deliverKit(bot, username, role) {
-  await moveNearPlayer(bot, username);
-  const item = findCarriedKit(bot, role);
+  const item = await waitForCarriedKit(bot, role);
   if (!item) {
     throw new Error(`El bot llegó junto a ${username}, pero ya no tiene la shulker de rol ${role} en el inventario.`);
   }
   const countBeforeDrop = countCarriedKits(bot, role);
+  console.log(`TPA completado para ${username}; soltando ${shulkerLabel(item)} en la posición actual.`);
   await bot.tossStack(item);
   await waitForKitDrop(bot, role, countBeforeDrop - item.count);
 }

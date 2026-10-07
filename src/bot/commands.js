@@ -1,5 +1,6 @@
 import { addUser, getLeaders, getUser, removeUser, ROLES, updateUserRole } from './permissions.js';
 import { countKits, deliverKit, prepareKit } from './enderchest.js';
+import { waitForTpaTeleport } from './tpa.js';
 
 let kitDeliveryInProgress = false;
 let homeOperationInProgress = false;
@@ -98,44 +99,6 @@ function parseCommand(message) {
   return { name: name.slice(1).toLowerCase(), args };
 }
 
-function getTpaAcceptancePattern() {
-  const source = process.env.TPA_ACCEPT_REGEX
-    ?? '(?:teleport(?:ation)?(?: request)?|tpa).{0,80}(?:accepted|approved)|(?:accepted|approved).{0,80}(?:teleport|tpa)';
-  try {
-    return new RegExp(source, 'i');
-  } catch (error) {
-    throw new Error(`TPA_ACCEPT_REGEX no es una expresión regular válida: ${error.message}`);
-  }
-}
-
-function waitForTpaAcceptance(bot, username) {
-  const timeoutMs = Number(process.env.TPA_TIMEOUT_MS ?? 120000);
-  if (!Number.isFinite(timeoutMs) || timeoutMs < 1000) {
-    throw new Error('TPA_TIMEOUT_MS debe ser un número de al menos 1000 ms.');
-  }
-  const acceptancePattern = getTpaAcceptancePattern();
-
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => finish(new Error(`Se agotó el tiempo esperando que ${username} acepte el TPA.`)), timeoutMs);
-    const onMessage = (message) => {
-      acceptancePattern.lastIndex = 0;
-      if (message.toLowerCase().includes(username.toLowerCase()) && acceptancePattern.test(message)) {
-        finish();
-      }
-    };
-    const onEnd = () => finish(new Error('El bot se desconectó mientras esperaba la aceptación del TPA.'));
-    function finish(error) {
-      clearTimeout(timer);
-      bot.removeListener('messagestr', onMessage);
-      bot.removeListener('end', onEnd);
-      if (error) reject(error);
-      else resolve();
-    }
-    bot.on('messagestr', onMessage);
-    bot.once('end', onEnd);
-  });
-}
-
 async function handleKit(bot, username, user) {
   if (kitDeliveryInProgress) {
     tell(bot, username, 'Hay otra operación de kits en curso. Inténtalo de nuevo más tarde.');
@@ -146,10 +109,11 @@ async function handleKit(bot, username, user) {
   try {
     await returnHome(bot);
     await prepareKit(bot, user.role);
+    const requestPosition = bot.entity?.position?.clone();
+    const teleported = waitForTpaTeleport(bot, username, requestPosition);
     bot.chat(`/tpa ${username}`);
-    const accepted = waitForTpaAcceptance(bot, username);
-    tell(bot, username, 'Solicitud de TPA enviada. Acepta la solicitud para recibir tu kit.');
-    await accepted;
+    tell(bot, username, 'Solicitud de TPA enviada. La entrega continuará al detectar que el bot llegó.');
+    await teleported;
     await deliverKit(bot, username, user.role);
     tell(bot, username, 'Kit entregado.');
     const deliveryPosition = bot.entity?.position?.clone();

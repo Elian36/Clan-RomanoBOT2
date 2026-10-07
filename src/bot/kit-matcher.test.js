@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { countKitItems, kitRoleForItem, shulkerLabel } from './kit-matcher.js';
+import { deliverKit } from './enderchest.js';
 
 test('requires the requested leader kit label instead of any generic leader text', () => {
   assert.equal(kitRoleForItem({
@@ -116,4 +117,21 @@ test('counts carried shulkers by their role and reports unclassified shulkers', 
     unidentified: [{ label: 'Otra caja', count: 1 }],
     totalShulkers: 5
   });
+});
+
+test('drops the carried kit at the current position after the TPA', async () => {
+  const kit = { name: 'purple_shulker_box', displayName: 'Lideres kit del C.R', count: 1, slot: 36 };
+  let tossCount = 0;
+  const bot = {
+    inventory: {
+      items: () => tossCount === 0 ? [kit] : []
+    },
+    tossStack: async (item) => {
+      assert.equal(item, kit);
+      tossCount += 1;
+    }
+  };
+
+  await deliverKit(bot, 'wNeofor', 'lider');
+  assert.equal(tossCount, 1);
 });
