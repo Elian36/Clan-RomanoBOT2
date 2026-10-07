@@ -1,6 +1,6 @@
 import pathfinderPlugin from 'mineflayer-pathfinder';
 import { ROLES } from './permissions.js';
-import { kitRoleForItem, isShulker, shulkerLabel } from './kit-matcher.js';
+import { countKitItems, kitRoleForItem, isShulker, shulkerLabel } from './kit-matcher.js';
 
 const { goals } = pathfinderPlugin;
 
@@ -114,23 +114,19 @@ export async function withEnderChest(bot, action) {
 
 export async function countKits(bot) {
   return withEnderChest(bot, (window) => {
-    const counts = Object.fromEntries(ROLES.map((role) => [role, 0]));
-    const unidentified = [];
-    for (const { item } of containerItems(window)) {
-      if (!isShulker(item)) {
-        continue;
-      }
-      const role = kitRoleForItem(item);
-      if (role) counts[role] += item.count;
-      else unidentified.push({ label: shulkerLabel(item), count: item.count });
-    }
-    return { counts, unidentified };
+    const carriedItems = bot.inventory.items();
+    const storedItems = containerItems(window).map(({ item }) => item);
+    return countKitItems([...carriedItems, ...storedItems]);
   });
 }
 
 export async function prepareKit(bot, role) {
   let selectedItem;
   let inventoryBefore;
+  const carriedKit = bot.inventory.items().find((item) => kitRoleForItem(item) === role);
+  if (carriedKit) {
+    return carriedKit;
+  }
 
   await withEnderChest(bot, async (window) => {
     const items = containerItems(window);

@@ -48,3 +48,17 @@ export function kitRoleForItem(item) {
 export function shulkerLabel(item) {
   return item.displayName ?? item.customName ?? item.name;
 }
+
+export function countKitItems(items) {
+  const counts = Object.fromEntries(Object.keys(ROLE_LABELS).map((role) => [role, 0]));
+  const unidentified = [];
+  for (const item of items) {
+    if (!isShulker(item)) {
+      continue;
+    }
+    const role = kitRoleForItem(item);
+    if (role) counts[role] += item.count ?? 1;
+    else unidentified.push({ label: shulkerLabel(item), count: item.count ?? 1 });
+  }
+  return { counts, unidentified };
+}

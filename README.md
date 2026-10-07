@@ -60,7 +60,8 @@ Roles: `lider`, `miembro_honorable`, `miembro`.
 
 - El bot debe tener cerca (máximo 32 bloques) un Ender Chest accesible con el kit guardado dentro.
 - Guarda cada kit como una caja shulker con estas etiquetas visibles/NBT: líder `Lideres kit del C.R`; miembro `Miembro kit del C.R`; honorable `m.h kit del C.R`. Para detectar la shulker honorable se usa esa etiqueta completa; `miembro_honorable` sigue siendo el nombre del rol en la base de datos, no una etiqueta adicional de shulker. No importa el uso de mayúsculas ni puntos en los nombres de kit. Cada caja contada equivale a una entrega. Las shulkers sin etiqueta de rol no se asignan a ningún kit.
-- `%stock` muestra las shulkers que no pudo clasificar para ayudar a corregir sus nombres.
+- `%stock` cuenta las shulkers que el bot lleva en su inventario y las que siguen dentro del Ender Chest; también muestra las que no pudo clasificar para ayudar a corregir sus nombres.
+- `%kit` usa primero una shulker del rol correspondiente que el bot ya lleva; si no tiene una, la busca y la retira del Ender Chest.
 - `%kit` mueve una caja coincidente al inventario, envía `/tpa <usuario>`, espera un mensaje del servidor que indique aceptación, se acerca al jugador y arroja la caja.
 - Coloca el bot junto al Ender Chest y ejecuta `%sethome` para fijar `aa`. Antes de revisar stock o retirar kits, volverá con `/home aa`; asegúrate de tener el Ender Chest a 32 bloques o menos de esa ubicación.
 - Los textos de aceptación de TPA varían entre servidores. Ajusta `TPA_ACCEPT_REGEX` en `.env` al mensaje real del servidor (debe incluir el username del jugador y el texto de aceptación) y `TPA_TIMEOUT_MS` al tiempo de espera deseado. Si la expresión no coincide, el bot no arroja el kit y el comando informa que expiró.
