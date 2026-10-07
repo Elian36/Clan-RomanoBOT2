@@ -1,0 +1,23 @@
+{
+  "name": "clan-romano-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mineflayer bot managed with Supabase roles and chat commands.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/bot/index.js",
+    "check": "node --check src/config/supabase.js && node --check src/bot/permissions.js && node --check src/bot/enderchest.js && node --check src/bot/commands.js && node --check src/bot/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0",
+    "dotenv": "^16.6.1",
+    "mineflayer": "^4.32.0",
+    "mineflayer-pathfinder": "^2.4.5"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}
