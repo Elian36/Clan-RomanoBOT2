@@ -2,36 +2,45 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { kitRoleForItem, shulkerLabel } from './kit-matcher.js';
 
-test('classifies colored shulkers by display name without requiring the word kit', () => {
+test('requires the requested leader kit label instead of any generic leader text', () => {
+  assert.equal(kitRoleForItem({
+    name: 'purple_shulker_box',
+    displayName: 'Lideres kit del C.R'
+  }), 'lider');
   assert.equal(kitRoleForItem({
     name: 'purple_shulker_box',
     displayName: 'Caja de Líder'
-  }), 'lider');
+  }), undefined);
 });
 
-test('recognizes the requested leader and member kit names', () => {
+test('recognizes the requested leader and exact member kit names', () => {
   assert.equal(kitRoleForItem({
     name: 'purple_shulker_box',
     displayName: 'Lideres kit del C.R'
   }), 'lider');
   assert.equal(kitRoleForItem({
     name: 'blue_shulker_box',
-    displayName: 'Miembro Lideres kit del C.R'
+    displayName: 'Miembro kit del C.R'
   }), 'miembro');
+  assert.equal(kitRoleForItem({
+    name: 'blue_shulker_box',
+    displayName: 'Miembro Lideres kit del C.R'
+  }), undefined);
 });
 
-test('recognizes honorable kits by mh, m.h, and honorable name variants', () => {
-  for (const displayName of [
-    'm.h kit del C.R',
-    'mh kit del C.R',
-    'Miembro Honorable',
-    'Honorable'
-  ]) {
-    assert.equal(kitRoleForItem({
-      name: 'red_shulker_box',
-      displayName
-    }), 'miembro_honorable', displayName);
-  }
+test('recognizes the full m.h kit del C.R honorable label', () => {
+  assert.equal(kitRoleForItem({
+    name: 'red_shulker_box',
+    displayName: 'm.h kit del C.R'
+  }), 'miembro_honorable');
+  assert.equal(kitRoleForItem({
+    name: 'red_shulker_box',
+    displayName: 'm.h'
+  }), undefined);
+  assert.equal(kitRoleForItem({
+    name: 'red_shulker_box',
+    displayName: 'Miembro Honorable'
+  }), undefined);
 });
 
 test('classifies shulkers by custom name stored in NBT', () => {
@@ -39,7 +48,7 @@ test('classifies shulkers by custom name stored in NBT', () => {
     name: 'red_shulker_box',
     nbt: {
       display: {
-        Name: { type: 'string', value: '{"text":"Kit Miembro Honorable"}' }
+        Name: { type: 'string', value: '{"text":"m.h kit del C.R"}' }
       }
     }
   }), 'miembro_honorable');

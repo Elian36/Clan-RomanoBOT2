@@ -1,7 +1,7 @@
 const ROLE_LABELS = Object.freeze({
-  miembro_honorable: ['mh', 'm h', 'miembro honorable', 'honorable'],
-  miembro: ['miembro lideres kit del c r', 'miembro kit del c r', 'miembro', 'member'],
-  lider: ['lideres kit del c r', 'lider', 'leader']
+  miembro_honorable: ['m h kit del c r'],
+  miembro: ['miembro kit del c r'],
+  lider: ['lideres kit del c r']
 });
 
 const SHULKER_PATTERN = /(?:^|_)shulker_box$/;
@@ -38,6 +38,9 @@ export function kitRoleForItem(item) {
   }
 
   const description = itemDescription(item);
+  if (hasLabel(description, 'miembro') && !hasLabel(description, 'miembro kit del c r')) {
+    return undefined;
+  }
   return Object.entries(ROLE_LABELS)
     .find(([, labels]) => labels.some((label) => hasLabel(description, label)))?.[0];
 }
