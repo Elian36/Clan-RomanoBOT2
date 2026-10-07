@@ -163,7 +163,11 @@ export async function prepareKit(bot, role) {
       throw new Error(`No se encontró una shulker identificada para el rol ${role}.${details}`);
     }
 
-    await bot.clickWindow(candidate.slot, 0, 0);
+    const destinationSlot = window.firstEmptySlotRange(window.inventoryStart, window.inventoryEnd);
+    if (destinationSlot === null) {
+      throw new Error('El inventario del bot está lleno; no se retiró la shulker del Ender Chest.');
+    }
+    await bot.moveSlotItem(candidate.slot, destinationSlot);
   });
 
   const inventoryItem = await waitForCarriedKit(bot, role);
