@@ -2,6 +2,20 @@ import { addUser, getUser, removeUser, ROLES, updateUserRole } from './permissio
 import { countKits, deliverKit, prepareKit } from './enderchest.js';
 
 let kitDeliveryInProgress = false;
+let homeOperationInProgress = false;
+
+function readHomeDelay() {
+  const delayMs = Number(process.env.HOME_COMMAND_DELAY_MS ?? 5000);
+  if (!Number.isFinite(delayMs) || delayMs < 1000) {
+    throw new Error('HOME_COMMAND_DELAY_MS debe ser un número de al menos 1000 ms.');
+  }
+  return delayMs;
+}
+
+async function returnHome(bot) {
+  bot.chat('/home aa');
+  await new Promise((resolve) => setTimeout(resolve, readHomeDelay()));
+}
 
 function tell(bot, username, message) {
   try {
@@ -63,6 +77,7 @@ async function handleKit(bot, username, user) {
 
   kitDeliveryInProgress = true;
   try {
+    await returnHome(bot);
     const item = await prepareKit(bot, user.role);
     bot.chat(`/tpa ${username}`);
     const accepted = waitForTpaAcceptance(bot, username);
@@ -75,7 +90,7 @@ async function handleKit(bot, username, user) {
   }
 }
 
-async function executeCommand(bot, username, message) {
+async function executeCommand(bot, username, message, onStop) {
   const { name, args } = parseCommand(message);
   const user = await getUser(username);
   if (!user) {
@@ -91,10 +106,32 @@ async function executeCommand(bot, username, message) {
       await handleKit(bot, username, user);
       return;
     case 'stock': {
+      if (kitDeliveryInProgress) {
+        tell(bot, username, 'Hay una entrega de kit en curso. Inténtalo de nuevo más tarde.');
+        return;
+      }
+      await returnHome(bot);
       const counts = await countKits(bot);
       tell(bot, username, `Stock: lider ${counts.lider}, miembro_honorable ${counts.miembro_honorable}, miembro ${counts.miembro}.`);
       return;
     }
+    case 'sethome':
+      if (args.length !== 0) {
+        tell(bot, username, 'Uso: %sethome');
+        return;
+      }
+      if (homeOperationInProgress || kitDeliveryInProgress) {
+        tell(bot, username, 'El bot está ocupado. Inténtalo de nuevo más tarde.');
+        return;
+      }
+      homeOperationInProgress = true;
+      try {
+        bot.chat('/sethome aa');
+        tell(bot, username, 'Se envió /sethome aa. La home queda en la ubicación actual del bot.');
+      } finally {
+        homeOperationInProgress = false;
+      }
+      return;
     case 'add': {
       if (user.role !== 'lider') {
         tell(bot, username, 'Solo un lider puede usar este comando.');
@@ -134,19 +171,27 @@ async function executeCommand(bot, username, message) {
       tell(bot, username, `${removed.username} fue eliminado.`);
       return;
     }
+    case 'stop':
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede desconectar el bot.');
+        return;
+      }
+      tell(bot, username, 'Desconectando el bot.');
+      onStop();
+      return;
     default:
-      tell(bot, username, 'Comando no reconocido. Usa %yo, %kit o %stock.');
+      tell(bot, username, 'Comando no reconocido. Usa %yo, %kit, %stock, %sethome o %stop.');
   }
 }
 
-export function installCommandHandlers(bot) {
+export function installCommandHandlers(bot, onStop) {
   const handleMessage = async (username, message) => {
     if (!username || username === bot.username || !message?.startsWith('%')) {
       return;
     }
 
     try {
-      await executeCommand(bot, username, message);
+      await executeCommand(bot, username, message, onStop);
     } catch (error) {
       console.error(`Error procesando comando de ${username}:`, error);
       tell(bot, username, `Error: ${error.message}`);

@@ -20,7 +20,18 @@ if (!Number.isFinite(reconnectDelay) || reconnectDelay < 1000) {
 }
 
 let reconnectTimer;
+let stoppedKeepAlive;
 let stopping = false;
+
+function readAntiAfkInterval() {
+  const intervalMs = Number(process.env.ANTI_AFK_INTERVAL_MS ?? 60000);
+  if (!Number.isFinite(intervalMs) || intervalMs < 10000) {
+    throw new Error('ANTI_AFK_INTERVAL_MS debe ser un número de al menos 10000 ms.');
+  }
+  return intervalMs;
+}
+
+const antiAfkInterval = readAntiAfkInterval();
 
 function createBot() {
   const options = {
@@ -37,6 +48,7 @@ function createBot() {
   }
 
   const bot = mineflayer.createBot(options);
+  let antiAfkTimer;
   bot.loadPlugin(pathfinder);
   bot.once('login', () => console.log(`Conectado a ${options.host}:${options.port} como ${bot.username}.`));
   bot.once('spawn', () => {
@@ -50,11 +62,27 @@ function createBot() {
         }
       }, 1500);
     }
-    installCommandHandlers(bot);
+    antiAfkTimer = setInterval(() => {
+      if (!bot.entity) {
+        return;
+      }
+      const yaw = bot.entity.yaw + 0.45;
+      bot.look(yaw, bot.entity.pitch, true)
+        .catch((error) => console.error('No se pudo mover la cámara para anti-AFK:', error));
+    }, antiAfkInterval);
+    antiAfkTimer.unref();
+    installCommandHandlers(bot, () => {
+      stopping = true;
+      clearTimeout(reconnectTimer);
+      clearInterval(antiAfkTimer);
+      bot.quit('Desconectado por comando de lider');
+      stoppedKeepAlive = setInterval(() => {}, 60000);
+    });
   });
   bot.on('kicked', (reason) => console.error('El servidor expulsó al bot:', reason));
   bot.on('error', (error) => console.error('Error de Mineflayer:', error));
   bot.once('end', (reason) => {
+    clearInterval(antiAfkTimer);
     console.warn(`Conexión finalizada: ${reason ?? 'sin motivo informado'}`);
     if (!stopping) {
       clearTimeout(reconnectTimer);
