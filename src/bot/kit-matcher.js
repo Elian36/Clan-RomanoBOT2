@@ -7,7 +7,7 @@ const ROLE_LABELS = Object.freeze({
 const SHULKER_PATTERN = /(?:^|_)shulker_box$/;
 
 function normalizedText(value) {
-  return value
+  return String(value)
     .replace(/§[0-9a-fk-orx]/gi, '')
     .replace(/&[0-9a-fk-orx]/gi, '')
     .normalize('NFD')
@@ -17,13 +17,41 @@ function normalizedText(value) {
     .trim();
 }
 
+function collectText(value, output = [], visited = new WeakSet()) {
+  if (typeof value === 'string') {
+    output.push(value);
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed !== value) collectText(parsed, output, visited);
+      } catch {
+        // Keep the original string; Minecraft component text is not always valid JSON.
+      }
+    }
+    return output;
+  }
+  if (!value || typeof value !== 'object' || visited.has(value)) {
+    return output;
+  }
+
+  visited.add(value);
+  if (Array.isArray(value)) {
+    for (const entry of value) collectText(entry, output, visited);
+  } else {
+    for (const entry of Object.values(value)) collectText(entry, output, visited);
+  }
+  return output;
+}
+
 function itemDescription(item) {
-  return normalizedText([
-    item.name ?? '',
-    item.displayName ?? '',
-    item.customName ?? '',
-    JSON.stringify(item.nbt ?? {})
-  ].join(' '));
+  const values = [
+    item.name,
+    item.displayName,
+    item.customName,
+    item.nbt
+  ];
+  return normalizedText(collectText(values).join(' '));
 }
 
 function hasLabel(description, label) {
@@ -49,7 +77,11 @@ export function kitRoleForItem(item) {
 }
 
 export function shulkerLabel(item) {
-  return item.customName ?? item.displayName ?? item.name;
+  const customText = collectText([item.customName, item.nbt])
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .find((value) => /lider|miembro|honor|m\.?\s*h/i.test(value));
+  return customText ?? item.displayName ?? item.customName ?? item.name;
 }
 
 export function countKitItems(items) {

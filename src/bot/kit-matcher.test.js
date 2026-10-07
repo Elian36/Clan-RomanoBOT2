@@ -54,6 +54,28 @@ test('ignores Minecraft color codes when matching kit names', () => {
   }), 'miembro_honorable');
 });
 
+test('reads kit names from nested Minecraft NBT and JSON text components', () => {
+  assert.equal(kitRoleForItem({
+    name: 'purple_shulker_box',
+    customName: { text: '', extra: [{ text: 'Lideres kit del C.R', color: 'gold' }] }
+  }), 'lider');
+  assert.equal(kitRoleForItem({
+    name: 'red_shulker_box',
+    nbt: {
+      value: {
+        components: {
+          'minecraft:custom_name': {
+            type: 'compound',
+            value: {
+              text: { type: 'string', value: '{"text":"m.h kit del C.R","italic":false}' }
+            }
+          }
+        }
+      }
+    }
+  }), 'miembro_honorable');
+});
+
 test('matches colored shulker item identifiers independently of inventory location', () => {
   assert.equal(kitRoleForItem({
     name: 'light_blue_shulker_box',
