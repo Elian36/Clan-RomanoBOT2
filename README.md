@@ -67,6 +67,17 @@ Roles: `lider`, `miembro_honorable`, `miembro`.
 
 `MINECRAFT_HOST`, `MINECRAFT_PORT`, `MINECRAFT_VERSION`, `RECONNECT_DELAY_MS`, `TPA_TIMEOUT_MS` y `TPA_ACCEPT_REGEX` están documentados en `.env.example`. Si se omite `MINECRAFT_VERSION`, Mineflayer intenta detectar la versión.
 
+## Desplegar el bot en Railway
+
+Supabase aloja la base de datos, no un proceso Mineflayer persistente. Para mantener la conexión TCP con Minecraft, despliega este proyecto como un servicio worker en Railway:
+
+1. En Railway, crea un proyecto y elige **Deploy from GitHub repo**; selecciona `Elian36/Clan-RomanoBOT2` y la rama `main`.
+2. Abre el servicio y ve a **Variables**. Añade las variables privadas del `.env`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MINECRAFT_USERNAME`, `MINECRAFT_PASSWORD`, `MINECRAFT_HOST=8b8t.me`, `MINECRAFT_PORT=25565`, `RECONNECT_DELAY_MS=10000`, `TPA_TIMEOUT_MS=120000` y `TPA_ACCEPT_REGEX`.
+3. No definas `MINECRAFT_AUTH` para la cuenta que inicia sesión con `/login`. Railway tomará Node.js y `npm start` del proyecto; [`railway.json`](./railway.json) configura el reinicio automático del worker.
+4. En **Deployments**, espera el deploy y revisa los logs. Deben indicar conexión a `8b8t.me:25565`, aparición en el mundo y envío de `/login`.
+
+Las variables de Railway son privadas; nunca pongas credenciales en el repositorio o en la configuración pública. Mantén un solo servicio conectado con esta cuenta de Minecraft para evitar sesiones duplicadas. Railway requiere una cuenta/servicio con disponibilidad de ejecución continua según sus condiciones y plan vigentes.
+
 ## Inicializar Git y publicar en GitHub
 
 En la carpeta del proyecto, configura tu identidad de Git si todavía no lo hiciste. No incluyas `.env` en el commit.
