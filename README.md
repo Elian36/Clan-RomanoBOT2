@@ -51,7 +51,7 @@ Los usernames se buscan exactamente como aparecen en Minecraft. Los comandos pue
 | `%add <usuario> <rol>` | Agrega un usuario. Solo para `lider`. |
 | `%role <usuario> <nuevo_rol>` | Cambia el rol. Solo para `lider`. |
 | `%remove <usuario>` | Elimina un usuario. Solo para `lider`. |
-| `%stop` | Desconecta el bot y desactiva la reconexión automática. Solo para `lider`. En Railway, reinicia el servicio manualmente para volver a conectarlo. |
+| `%stop` | Desconecta el bot y desactiva la reconexión automática. Solo para `lider`. En Debian, usa `./scripts/start-or-restart.sh` para iniciarlo otra vez. |
 | `%sethome` | Guarda `/sethome zs` en la ubicación actual del bot. Solo para `lider`. |
 | `%kill` | Mata al bot. Solo para `lider`; al respawnear volverá automáticamente a `/home zs`. |
 | `%restock` | Busca un cofre doble a 3 bloques o menos y repone con sus kits el Ender Chest. Si el Ender Chest se llena, devuelve el sobrante al mismo cofre. Solo para `lider`. |
@@ -80,18 +80,52 @@ Roles: `lider`, `miembro_honorable`, `miembro`.
 
 El bot mueve la cabeza cada 60 segundos para mantenerse activo. Configura `ANTI_AFK_INTERVAL_MS` para ajustar el intervalo (mínimo 10000 ms). `HOME_COMMAND_DELAY_MS` controla cuánto espera tras `/home zs` antes de abrir el Ender Chest (por defecto 5000 ms). `SPAWN_X` y `SPAWN_Z` definen las coordenadas X/Z del spawn para la comprobación de distancia (por defecto 0, 0). También están documentados `MINECRAFT_HOST`, `MINECRAFT_PORT`, `MINECRAFT_VERSION`, `RECONNECT_DELAY_MS`, `TPA_TIMEOUT_MS` y `TPA_ACCEPT_REGEX` en `.env.example`. Si se omite `MINECRAFT_VERSION`, Mineflayer intenta detectar la versión.
 
-## Desplegar el bot en Railway
+## Ejecutar como servicio en Debian
 
-Supabase aloja la base de datos, no un proceso Mineflayer persistente. Para mantener la conexión TCP con Minecraft, despliega este proyecto como un servicio worker en Railway:
+Usa una sola instancia del bot para esta cuenta de Minecraft. Antes de arrancarla en Debian, detén el servicio de Railway y desactiva su despliegue automático o desvincula el repositorio desde el panel de Railway. Este proyecto no puede detener un servicio remoto de Railway por sí solo.
 
-1. En Railway, crea un proyecto y elige **Deploy from GitHub repo**; selecciona `Elian36/Clan-RomanoBOT2` y la rama `main`.
-2. Abre el servicio y ve a **Variables**. Añade las variables privadas del `.env`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MINECRAFT_USERNAME`, `MINECRAFT_PASSWORD`, `MINECRAFT_HOST=8b8t.me`, `MINECRAFT_PORT=25565`, `RECONNECT_DELAY_MS=10000`, `HOME_COMMAND_DELAY_MS=5000`, `ANTI_AFK_INTERVAL_MS=60000`, `TPA_TIMEOUT_MS=120000` y `TPA_ACCEPT_REGEX`.
-3. No definas `MINECRAFT_AUTH` para la cuenta que inicia sesión con `/login`. Railway tomará Node.js y `npm start` del proyecto; [`railway.json`](./railway.json) configura el reinicio automático del worker.
-4. En **Deployments**, espera el deploy y revisa los logs. Deben indicar conexión a `8b8t.me:25565`, aparición en el mundo y envío de `/login`.
+1. Instala Git, Node.js 20 o superior y npm. Verifica `node --version` y `npm --version`.
+2. Clona el repositorio en la carpeta `Clan-RomanoBOT2` dentro de tu directorio personal y entra en ella:
 
-Las variables de Railway son privadas; nunca pongas credenciales en el repositorio o en la configuración pública. Mantén un solo servicio conectado con esta cuenta de Minecraft para evitar sesiones duplicadas. Railway requiere una cuenta/servicio con disponibilidad de ejecución continua según sus condiciones y plan vigentes.
+   ```bash
+   git clone https://github.com/Elian36/Clan-RomanoBOT2.git ~/Clan-RomanoBOT2
+   cd ~/Clan-RomanoBOT2
+   ```
 
-Si los logs muestran `already connected to this proxy`, detén cualquier proceso local y revisa que Railway tenga una sola réplica del servicio. El bot ahora detiene los reintentos cuando detecta ese rechazo para no generar un ciclo de logs; cierra la otra sesión y reinicia el deployment de Railway.
+3. Instala dependencias y configura el archivo privado `.env`:
+
+   ```bash
+   npm ci
+   cp .env.example .env
+   chmod 600 .env
+   nano .env
+   ```
+
+   Completa las variables de Supabase y Minecraft siguiendo la sección **Configuración**. No copies `.env` a GitHub.
+
+4. Inicia el servicio por primera vez:
+
+   ```bash
+   chmod +x scripts/start-or-restart.sh
+   ./scripts/start-or-restart.sh
+   ```
+
+   El script instala/actualiza una unidad systemd del usuario, la habilita al inicio de sesión y arranca el bot. Si ya estaba activo, lo reinicia. Para que systemd lo mantenga activo después de cerrar sesión y al reiniciar Debian, habilita lingering una sola vez:
+
+   ```bash
+   sudo loginctl enable-linger "$USER"
+   ```
+
+5. Consulta los logs y el estado:
+
+   ```bash
+   systemctl --user status clan-romano-bot
+   journalctl --user -u clan-romano-bot -f
+   ```
+
+   Usa `./scripts/start-or-restart.sh` después de actualizar el código o de `%stop`; el script reinicia la unidad si ya estaba encendida. Para detenerla manualmente: `systemctl --user stop clan-romano-bot`.
+
+El servicio usa la instalación de Node.js visible en `PATH` al ejecutar el script. Si actualizas Node desde un gestor de versiones, vuelve a ejecutar el script para actualizar la ruta usada por systemd.
 
 ## Inicializar Git y publicar en GitHub
 
