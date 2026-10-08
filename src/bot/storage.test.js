@@ -152,6 +152,44 @@ test('clean A moves ender kits to a simple chest without moving other items', as
   assert.equal(destination.slots[0].displayName, 'm.h kit del C.R');
 });
 
+test('clean A moves every kit and only opens the selected chest once for inspection and once for transfer', async () => {
+  const ender = createWindow(27);
+  ender.slots[0] = kit('m.h kit del C.R');
+  ender.slots[1] = kit('M.H');
+  ender.slots[2] = kit('MH');
+  const destination = createWindow(27);
+  const bot = createBot({ enderChest: ender, chests: [{ window: destination }] });
+  const openCounts = new Map();
+  const openContainer = bot.openContainer.bind(bot);
+  bot.openContainer = async (block) => {
+    openCounts.set(block.window, (openCounts.get(block.window) ?? 0) + 1);
+    return openContainer(block);
+  };
+
+  const moved = await moveAllKitsToSingleChest(bot);
+
+  assert.equal(moved, 3);
+  assert.equal(ender.slots.slice(0, 3).filter(Boolean).length, 0);
+  assert.deepEqual(destination.slots.slice(0, 3).map((item) => item.displayName), [
+    'm.h kit del C.R',
+    'M.H',
+    'MH'
+  ]);
+  assert.equal(openCounts.get(destination), 2);
+  assert.equal(openCounts.get(ender), 2);
+});
+
+test('clean A does not remove kits when no nearby simple chest has enough free slots', async () => {
+  const ender = createWindow(27);
+  ender.slots[0] = kit('Lideres kit del C.R');
+  const destination = createWindow(27);
+  destination.slots.fill({ name: 'stone', count: 64 }, 0, 27);
+  const bot = createBot({ enderChest: ender, chests: [{ window: destination }] });
+
+  await assert.rejects(moveAllKitsToSingleChest(bot), /más espacio/);
+  assert.equal(ender.slots[0].displayName, 'Lideres kit del C.R');
+});
+
 test('clean B drops non-kit items and leaves recognized kits in the ender chest', async () => {
   const ender = createWindow(27);
   ender.slots[0] = { name: 'stone', count: 64 };

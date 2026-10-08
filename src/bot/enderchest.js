@@ -37,13 +37,15 @@ async function withContainer(bot, block, action) {
   }
 }
 
-async function findNearbyChest(bot, { radius, slotCount, description }) {
+async function findNearbyChest(bot, { radius, slotCount, description, requiredSlots = 0 }) {
   const positions = bot.findBlocks({
     matching: (block) => block.name === 'chest' || block.name === 'trapped_chest',
     maxDistance: radius,
     count: 100
   });
   const failures = [];
+  let largestAvailableSlotCount = 0;
+  let foundMatchingChest = false;
 
   for (const position of positions) {
     const block = bot.blockAt(position);
@@ -51,17 +53,27 @@ async function findNearbyChest(bot, { radius, slotCount, description }) {
       continue;
     }
     try {
-      const matches = await withContainer(bot, block, (window) => window.inventoryStart === slotCount);
-      if (matches) {
-        return block;
+      const capacity = await withContainer(bot, block, (window) => {
+        if (window.inventoryStart !== slotCount) return null;
+        const freeSlots = Array.from({ length: window.inventoryStart }, (_, slot) => slot)
+          .filter((slot) => !window.slots[slot]).length;
+        return { block, freeSlots };
+      });
+      if (capacity) {
+        foundMatchingChest = true;
+        largestAvailableSlotCount = Math.max(largestAvailableSlotCount, capacity.freeSlots);
+        if (capacity.freeSlots >= requiredSlots) return capacity;
       }
     } catch (error) {
       failures.push(error.message);
     }
   }
 
+  const capacityDetails = foundMatchingChest && requiredSlots
+    ? ` El cofre simple con más espacio tiene ${largestAvailableSlotCount} slots libres y se necesitan ${requiredSlots}.`
+    : '';
   const failureDetails = failures.length ? ` No se pudieron abrir algunos cofres: ${failures.slice(0, 2).join('; ')}.` : '';
-  throw new Error(`No se encontró un ${description} accesible a ${radius} bloques o menos.${failureDetails}`);
+  throw new Error(`No se encontró un ${description} accesible a ${radius} bloques o menos con espacio suficiente.${capacityDetails}${failureDetails}`);
 }
 
 function inventorySlotInWindow(bot, window, item) {
@@ -220,7 +232,7 @@ export async function deliverKit(bot, username, role) {
 }
 
 export async function restockKits(bot) {
-  const sourceChest = await findNearbyChest(bot, {
+  const { block: sourceChest } = await findNearbyChest(bot, {
     radius: 3,
     slotCount: 54,
     description: 'cofre doble'
@@ -256,11 +268,6 @@ export async function restockKits(bot) {
 }
 
 export async function moveAllKitsToSingleChest(bot) {
-  const targetChest = await findNearbyChest(bot, {
-    radius: 2,
-    slotCount: 27,
-    description: 'cofre simple'
-  });
   const carriedSlots = carriedKitSlots(bot);
 
   const requiredSlots = await withEnderChest(bot, (window) => {
@@ -275,12 +282,12 @@ export async function moveAllKitsToSingleChest(bot) {
     return enderKits.length + carriedSlots.length;
   });
 
-  const freeChestSlots = await withContainer(bot, targetChest, (window) => (
-    Array.from({ length: window.inventoryStart }, (_, slot) => slot).filter((slot) => !window.slots[slot]).length
-  ));
-  if (freeChestSlots < requiredSlots) {
-    throw new Error(`El cofre simple solo tiene ${freeChestSlots} slots libres y se necesitan ${requiredSlots}; no se movieron kits.`);
-  }
+  const { block: targetChest } = await findNearbyChest(bot, {
+    radius: 2,
+    slotCount: 27,
+    description: 'cofre simple',
+    requiredSlots
+  });
 
   await withEnderChest(bot, async (window) => {
     const moved = await moveContainerKitsToInventory(bot, window);
@@ -288,7 +295,11 @@ export async function moveAllKitsToSingleChest(bot) {
       throw new Error('No se pudieron retirar todos los kits del Ender Chest.');
     }
   });
-  return withContainer(bot, targetChest, (window) => moveInventoryKitsToContainer(bot, window));
+  const movedToChest = await withContainer(bot, targetChest, (window) => moveInventoryKitsToContainer(bot, window));
+  if (movedToChest !== requiredSlots) {
+    throw new Error(`Se movieron ${movedToChest} de ${requiredSlots} kits al cofre simple; los restantes siguen en el inventario del bot.`);
+  }
+  return movedToChest;
 }
 
 export async function discardEnderChestGarbage(bot) {
