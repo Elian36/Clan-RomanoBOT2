@@ -130,7 +130,7 @@ async function waitForKitDrop(bot, role, expectedCount) {
   while (Date.now() < deadline) {
     if (countCarriedKits(bot, role) <= expectedCount) {
       countReachedAt ??= Date.now();
-      if (Date.now() - countReachedAt >= 500) {
+      if (Date.now() - countReachedAt >= 100) {
         return;
       }
     } else {

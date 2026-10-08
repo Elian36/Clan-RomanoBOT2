@@ -38,45 +38,6 @@ function isNearSpawn(position) {
   return Math.hypot(position.x - spawnX, position.z - spawnZ) < 20000;
 }
 
-function waitForKillConfirmation(bot) {
-  const source = process.env.KILL_CONFIRM_REGEX ?? '(?:kill|respawn).{0,80}(?:confirm|sure|accept)|(?:confirm|sure|accept).{0,80}(?:kill|respawn)';
-  const command = process.env.KILL_CONFIRM_COMMAND ?? '/kill confirm';
-  let pattern;
-  try {
-    pattern = new RegExp(source, 'i');
-  } catch (error) {
-    throw new Error(`KILL_CONFIRM_REGEX no es válida: ${error.message}`);
-  }
-
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => finish(new Error('El servidor no mostró una confirmación para /kill.')), 15000);
-    const onMessage = (message) => {
-      pattern.lastIndex = 0;
-      if (pattern.test(message)) {
-        bot.chat(command);
-        finish();
-      }
-    };
-    const onEnd = () => finish(new Error('El bot se desconectó esperando confirmar /kill.'));
-    function finish(error) {
-      clearTimeout(timer);
-      bot.removeListener('messagestr', onMessage);
-      bot.removeListener('end', onEnd);
-      if (error) reject(error);
-      else resolve();
-    }
-    bot.on('messagestr', onMessage);
-    bot.once('end', onEnd);
-  });
-}
-
-async function respawnAtBed(bot, username) {
-  const confirmation = waitForKillConfirmation(bot);
-  bot.chat('/kill');
-  tell(bot, username, 'No hay líderes conectados; solicité respawn con /kill y confirmaré el aviso del servidor.');
-  await confirmation;
-}
-
 async function askOnlineLeadersForHelp(bot, username, position) {
   const leaders = await getLeaders();
   const onlineLeaders = leaders.filter(({ username: leader }) => (
@@ -123,21 +84,26 @@ async function handleKit(bot, username, user) {
     tell(bot, username, 'Solicitud de TPA enviada. La entrega continuará al detectar que el bot llegó.');
     await teleported;
     await deliverKit(bot, username, user.role);
-    tell(bot, username, 'Kit entregado.');
     const deliveryPosition = bot.entity?.position?.clone();
     const nearSpawn = isNearSpawn(deliveryPosition);
     try {
-      if (nearSpawn && !await askOnlineLeadersForHelp(bot, username, deliveryPosition)) {
-        await respawnAtBed(bot, username);
-        tell(bot, username, 'Respawn solicitado para volver a la cama.');
-        return;
-      }
-      await returnHome(bot);
+      bot.chat('/home zs');
     } catch (error) {
-      tell(bot, username, `La entrega se completó, pero falló la recuperación: ${error.message}`);
+      tell(bot, username, `El kit se entregó, pero no se pudo solicitar el regreso a /home zs: ${error.message}`);
       throw error;
     }
-    tell(bot, username, 'El bot volvió a /home zs.');
+    tell(bot, username, 'Kit entregado; el bot ya está regresando a /home zs.');
+    if (nearSpawn && deliveryPosition) {
+      try {
+        const leadersNotified = await askOnlineLeadersForHelp(bot, username, deliveryPosition);
+        if (!leadersNotified) {
+          tell(bot, username, 'No había líderes conectados para avisar; el bot ya está regresando a /home zs.');
+        }
+      } catch (error) {
+        console.error('No se pudo avisar a los líderes después de entregar un kit:', error);
+        tell(bot, username, 'El kit se entregó y el regreso fue solicitado, pero no se pudo avisar a los líderes.');
+      }
+    }
   } finally {
     kitDeliveryInProgress = false;
   }
