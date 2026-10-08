@@ -51,8 +51,14 @@ function createBot({ enderChest, chests = [] }) {
     findBlock({ matching }) {
       return matching(enderBlock) ? enderBlock : null;
     },
-    findBlocks() {
-      return blocks.map((block) => block.position);
+    findBlocks({ maxDistance }) {
+      return blocks
+        .filter((block) => Math.hypot(
+          block.position.x - this.entity.position.x,
+          block.position.y - this.entity.position.y,
+          block.position.z - this.entity.position.z
+        ) <= maxDistance)
+        .map((block) => block.position);
     },
     blockAt(position) {
       return blocks.find((block) => (
@@ -133,6 +139,33 @@ test('restock moves kits from only a double chest to ender storage', async () =>
   assert.equal(result.sourceRemaining, 0);
   assert.equal(ender.slots[0].displayName, 'Lideres kit del C.R');
   assert.equal(source.slots[0], null);
+});
+
+test('restock expands its search when a nearby single chest is found before the double chest behind it', async () => {
+  const single = createWindow(27);
+  const source = createWindow(54);
+  source.slots[0] = kit('Lideres kit del C.R');
+  const ender = createWindow(27);
+  const bot = createBot({
+    enderChest: ender,
+    chests: [
+      { window: single, x: 1 },
+      { window: source, x: 4 }
+    ]
+  });
+  const openCounts = new Map();
+  const openContainer = bot.openContainer.bind(bot);
+  bot.openContainer = async (block) => {
+    openCounts.set(block.window, (openCounts.get(block.window) ?? 0) + 1);
+    return openContainer(block);
+  };
+
+  const result = await restockKits(bot);
+
+  assert.equal(result.stored, 1);
+  assert.equal(ender.slots[0].displayName, 'Lideres kit del C.R');
+  assert.equal(openCounts.get(single), 1);
+  assert.equal(openCounts.get(source), 3);
 });
 
 test('restock returns overflow kits to their source double chest', async () => {

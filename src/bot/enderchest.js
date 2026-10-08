@@ -54,41 +54,54 @@ async function withContainer(bot, block, action) {
   }
 }
 
-async function findNearbyChest(bot, { radius, slotCount, description, requiredSlots = 0 }) {
-  const positions = bot.findBlocks({
-    matching: (block) => block.name === 'chest' || block.name === 'trapped_chest',
-    maxDistance: radius,
-    count: 100
-  });
+async function findNearbyChest(bot, { radius, fallbackRadius = radius, slotCount, description, requiredSlots = 0 }) {
   const failures = [];
   let largestAvailableSlotCount = 0;
   let foundMatchingChest = false;
+  const checkedPositions = new Set();
 
-  for (const position of positions) {
-    const block = bot.blockAt(position);
-    if (!block || (block.name !== 'chest' && block.name !== 'trapped_chest')) {
-      continue;
-    }
-    if (slotCount === 27 && !isSingleChest(bot, block)) {
-      continue;
-    }
-    const capacity = await withContainer(bot, block, (window) => {
-      if (window.inventoryStart !== slotCount) return null;
-      const freeSlots = Array.from({ length: window.inventoryStart }, (_, slot) => slot)
-        .filter((slot) => !window.slots[slot]).length;
-      return { block, freeSlots };
+  for (const searchRadius of [...new Set([radius, fallbackRadius])]) {
+    const positions = bot.findBlocks({
+      matching: (block) => block.name === 'chest' || block.name === 'trapped_chest',
+      maxDistance: searchRadius,
+      count: 100
     });
-    if (capacity) {
-      foundMatchingChest = true;
-      largestAvailableSlotCount = Math.max(largestAvailableSlotCount, capacity.freeSlots);
-      if (capacity.freeSlots >= requiredSlots) return capacity;
+
+    for (const position of positions) {
+      const key = `${position.x},${position.y},${position.z}`;
+      if (checkedPositions.has(key)) continue;
+      checkedPositions.add(key);
+
+      const block = bot.blockAt(position);
+      if (!block || (block.name !== 'chest' && block.name !== 'trapped_chest')) {
+        continue;
+      }
+      if (slotCount === 27 && !isSingleChest(bot, block)) {
+        continue;
+      }
+      try {
+        const capacity = await withContainer(bot, block, (window) => {
+          if (window.inventoryStart !== slotCount) return null;
+          const freeSlots = Array.from({ length: window.inventoryStart }, (_, slot) => slot)
+            .filter((slot) => !window.slots[slot]).length;
+          return { block, freeSlots };
+        });
+        if (capacity) {
+          foundMatchingChest = true;
+          largestAvailableSlotCount = Math.max(largestAvailableSlotCount, capacity.freeSlots);
+          if (capacity.freeSlots >= requiredSlots) return capacity;
+        }
+      } catch (error) {
+        failures.push(error.message);
+      }
     }
   }
 
   const capacityDetails = foundMatchingChest && requiredSlots
     ? ` El cofre simple con más espacio tiene ${largestAvailableSlotCount} slots libres y se necesitan ${requiredSlots}.`
     : '';
-  throw new Error(`No se encontró un ${description} accesible a ${radius} bloques o menos con espacio suficiente.${capacityDetails}`);
+  const failureDetails = failures.length ? ` Algunos cofres no se pudieron inspeccionar: ${failures.slice(0, 2).join('; ')}.` : '';
+  throw new Error(`No se encontró un ${description} accesible a ${fallbackRadius} bloques o menos con espacio suficiente.${capacityDetails}${failureDetails}`);
 }
 
 async function moveContainerKitsToInventory(bot, window) {
@@ -262,6 +275,7 @@ export async function deliverKit(bot, username, role) {
 export async function restockKits(bot) {
   const { block: sourceChest } = await findNearbyChest(bot, {
     radius: 3,
+    fallbackRadius: 5,
     slotCount: 54,
     description: 'cofre doble'
   });
