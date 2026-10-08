@@ -20,6 +20,7 @@ if (!Number.isFinite(reconnectDelay) || reconnectDelay < 1000) {
 }
 
 let reconnectTimer;
+let stoppedKeepAlive;
 let stopping = false;
 
 function readAntiAfkInterval() {
@@ -49,9 +50,33 @@ function createBot() {
   const bot = mineflayer.createBot(options);
   let antiAfkTimer;
   let connectionConflict = false;
+  let hasSpawned = false;
+  let returnHomeAfterRespawn = false;
   bot.loadPlugin(pathfinder);
   bot.once('login', () => console.log(`Conectado a ${options.host}:${options.port} como ${bot.username}.`));
-  bot.once('spawn', () => {
+  bot.on('death', () => {
+    returnHomeAfterRespawn = true;
+    console.warn('El bot murió; se preparará para volver a /home zs al respawnear.');
+    setTimeout(() => {
+      if (!bot.isAlive && typeof bot.respawn === 'function') {
+        bot.respawn();
+      }
+    }, 1000);
+  });
+  bot.on('spawn', () => {
+    if (hasSpawned) {
+      if (returnHomeAfterRespawn) {
+        returnHomeAfterRespawn = false;
+        setTimeout(() => {
+          if (bot.entity) {
+            bot.chat('/home zs');
+            console.log('Después del respawn, se envió /home zs.');
+          }
+        }, Number(process.env.HOME_COMMAND_DELAY_MS ?? 5000));
+      }
+      return;
+    }
+    hasSpawned = true;
     console.log('El bot apareció en el mundo.');
     const password = process.env.MINECRAFT_PASSWORD;
     if (password) {
@@ -95,7 +120,7 @@ function createBot() {
     if (connectionConflict) {
       stopping = true;
       clearTimeout(reconnectTimer);
-      setInterval(() => {}, 60000);
+      stoppedKeepAlive = setInterval(() => {}, 60000);
       return;
     }
     if (!stopping) {

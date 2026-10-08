@@ -1,9 +1,17 @@
 import { addUser, getLeaders, getUser, removeUser, ROLES, updateUserRole } from './permissions.js';
-import { countKits, deliverKit, prepareKit } from './enderchest.js';
+import {
+  countKits,
+  deliverKit,
+  discardEnderChestGarbage,
+  moveAllKitsToSingleChest,
+  prepareKit,
+  restockKits
+} from './enderchest.js';
 import { waitForTpaTeleport } from './tpa.js';
 
 let kitDeliveryInProgress = false;
 let homeOperationInProgress = false;
+let storageOperationInProgress = false;
 
 function readHomeDelay() {
   const delayMs = Number(process.env.HOME_COMMAND_DELAY_MS ?? 5000);
@@ -14,7 +22,7 @@ function readHomeDelay() {
 }
 
 async function returnHome(bot) {
-  bot.chat('/home aa');
+  bot.chat('/home zs');
   await new Promise((resolve) => setTimeout(resolve, readHomeDelay()));
 }
 
@@ -129,7 +137,7 @@ async function handleKit(bot, username, user) {
       tell(bot, username, `La entrega se completó, pero falló la recuperación: ${error.message}`);
       throw error;
     }
-    tell(bot, username, 'El bot volvió a /home aa.');
+    tell(bot, username, 'El bot volvió a /home zs.');
   } finally {
     kitDeliveryInProgress = false;
   }
@@ -148,11 +156,19 @@ async function executeCommand(bot, username, message, onStop) {
       tell(bot, username, `Registrado: sí | Rol: ${user.role}`);
       return;
     case 'kit':
+      if (storageOperationInProgress) {
+        tell(bot, username, 'El bot está ocupado organizando el inventario. Inténtalo de nuevo más tarde.');
+        return;
+      }
       await handleKit(bot, username, user);
       return;
     case 'stock': {
       if (kitDeliveryInProgress) {
         tell(bot, username, 'Hay una entrega de kit en curso. Inténtalo de nuevo más tarde.');
+        return;
+      }
+      if (storageOperationInProgress) {
+        tell(bot, username, 'El bot está ocupado organizando cofres. Inténtalo de nuevo más tarde.');
         return;
       }
       await returnHome(bot);
@@ -171,18 +187,68 @@ async function executeCommand(bot, username, message, onStop) {
         tell(bot, username, 'Uso: %sethome');
         return;
       }
-      if (homeOperationInProgress || kitDeliveryInProgress) {
+      if (homeOperationInProgress || kitDeliveryInProgress || storageOperationInProgress) {
         tell(bot, username, 'El bot está ocupado. Inténtalo de nuevo más tarde.');
         return;
       }
       homeOperationInProgress = true;
       try {
-        bot.chat('/sethome aa');
-        tell(bot, username, 'Se envió /sethome aa. La home queda en la ubicación actual del bot.');
+        bot.chat('/sethome zs');
+        tell(bot, username, 'Se envió /sethome zs. La home queda en la ubicación actual del bot.');
       } finally {
         homeOperationInProgress = false;
       }
       return;
+    case 'restock':
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede reabastecer kits.');
+        return;
+      }
+      if (storageOperationInProgress || kitDeliveryInProgress) {
+        tell(bot, username, 'El bot está ocupado. Inténtalo de nuevo más tarde.');
+        return;
+      }
+      storageOperationInProgress = true;
+      try {
+        await returnHome(bot);
+        const result = await restockKits(bot);
+        tell(bot, username, `Restock: ${result.stored} kits al Ender Chest, ${result.returned} devueltos al cofre doble${result.remaining ? `, ${result.remaining} siguen en inventario` : ''}${result.sourceRemaining ? `, ${result.sourceRemaining} siguen en el cofre doble` : ''}.`);
+      } finally {
+        storageOperationInProgress = false;
+      }
+      return;
+    case 'limpiar': {
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede limpiar cofres.');
+        return;
+      }
+      if (args.length !== 1 || !['a', 'b'].includes(args[0].toLowerCase())) {
+        tell(bot, username, 'Uso: %limpiar a | %limpiar b');
+        return;
+      }
+      if (storageOperationInProgress || kitDeliveryInProgress) {
+        tell(bot, username, 'El bot está ocupado. Inténtalo de nuevo más tarde.');
+        return;
+      }
+      storageOperationInProgress = true;
+      try {
+        await returnHome(bot);
+        if (args[0].toLowerCase() === 'a') {
+          const moved = await moveAllKitsToSingleChest(bot);
+          tell(bot, username, `Limpieza A: ${moved} kits movidos del Ender Chest al cofre simple.`);
+        } else {
+          try {
+            const tossed = await discardEnderChestGarbage(bot);
+            tell(bot, username, `Limpieza B: ${tossed} stacks de basura soltados a 32 bloques.`);
+          } finally {
+            await returnHome(bot);
+          }
+        }
+      } finally {
+        storageOperationInProgress = false;
+      }
+      return;
+    }
     case 'add': {
       if (user.role !== 'lider') {
         tell(bot, username, 'Solo un lider puede usar este comando.');
@@ -230,8 +296,20 @@ async function executeCommand(bot, username, message, onStop) {
       tell(bot, username, 'Desconectando el bot.');
       onStop();
       return;
+    case 'kill':
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede matar al bot.');
+        return;
+      }
+      if (kitDeliveryInProgress || storageOperationInProgress) {
+        tell(bot, username, 'No puedo morir durante una entrega o movimiento de cofres.');
+        return;
+      }
+      tell(bot, username, 'Ejecutando /kill; al respawnear el bot volverá a /home zs.');
+      bot.chat('/kill');
+      return;
     default:
-      tell(bot, username, 'Comando no reconocido. Usa %yo, %kit, %stock, %sethome o %stop.');
+      tell(bot, username, 'Comando no reconocido. Usa %yo, %kit, %stock, %sethome, %kill, %restock, %limpiar a|b o %stop.');
   }
 }
 

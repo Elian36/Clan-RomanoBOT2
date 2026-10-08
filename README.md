@@ -52,7 +52,11 @@ Los usernames se buscan exactamente como aparecen en Minecraft. Los comandos pue
 | `%role <usuario> <nuevo_rol>` | Cambia el rol. Solo para `lider`. |
 | `%remove <usuario>` | Elimina un usuario. Solo para `lider`. |
 | `%stop` | Desconecta el bot y desactiva la reconexión automática. Solo para `lider`. En Railway, reinicia el servicio manualmente para volver a conectarlo. |
-| `%sethome` | Guarda `/sethome aa` en la ubicación actual del bot. Disponible para usuarios registrados. |
+| `%sethome` | Guarda `/sethome zs` en la ubicación actual del bot. Disponible para usuarios registrados. |
+| `%kill` | Mata al bot. Solo para `lider`; al respawnear volverá automáticamente a `/home zs`. |
+| `%restock` | Busca un cofre doble a 3 bloques o menos y repone con sus kits el Ender Chest. Si el Ender Chest se llena, devuelve el sobrante al mismo cofre. Solo para `lider`. |
+| `%limpiar b` | Retira del Ender Chest lo que no sean kits, camina 32 bloques para soltarlo y vuelve a `/home zs`. Solo para `lider`. |
+| `%limpiar a` | Saca los kits del Ender Chest y los guarda en un cofre simple a 2 bloques o menos. Solo para `lider`. |
 
 Roles: `lider`, `miembro_honorable`, `miembro`.
 
@@ -63,14 +67,17 @@ Roles: `lider`, `miembro_honorable`, `miembro`.
 - `%stock` cuenta las shulkers que el bot lleva en su inventario y las que siguen dentro del Ender Chest; ignora códigos de color de Minecraft y muestra los nombres sin clasificar y el número de slots revisados para ayudar a diagnosticar problemas.
 - `%kit` usa primero una shulker del rol correspondiente que el bot ya lleva; si no tiene una, la transfiere a un slot vacío del inventario con una operación de movimiento antes de cerrar el Ender Chest.
 - `%kit` mueve una caja coincidente al inventario, registra la posición antes de enviar `/tpa <usuario>` y detecta la llegada por `forcedMove` o por cambio de posición. Al llegar, arroja la shulker en su posición actual; no depende de localizar ni navegar hacia la entidad del jugador.
-- Tras confirmar que la shulker salió del inventario, vuelve a `/home aa`. Si la entrega ocurrió a menos de 20.000 bloques horizontales del spawn, envía las coordenadas por privado a los líderes registrados que estén conectados. Si no hay ninguno, ejecuta `/kill` y, si el servidor muestra un mensaje de confirmación que coincide con `KILL_CONFIRM_REGEX`, envía `KILL_CONFIRM_COMMAND` (por defecto `/kill confirm`) para respawnear en la cama. Ajusta esas variables al texto y comando de confirmación que use el servidor.
-- Coloca el bot junto al Ender Chest y ejecuta `%sethome` para fijar `aa`. Antes de revisar stock o retirar kits, volverá con `/home aa`; asegúrate de tener el Ender Chest a 32 bloques o menos de esa ubicación.
+- Tras confirmar que la shulker salió del inventario, vuelve a `/home zs`. Si la entrega ocurrió a menos de 20.000 bloques horizontales del spawn, envía las coordenadas por privado a los líderes registrados que estén conectados. Si no hay ninguno, ejecuta `/kill`; tras cada muerte, incluso por `%kill`, respawnea y vuelve automáticamente a `/home zs`.
+- Coloca el bot junto al Ender Chest y ejecuta `%sethome` para fijar `zs`. Antes de revisar stock o retirar kits, volverá con `/home zs`; asegúrate de tener el Ender Chest a 32 bloques o menos de esa ubicación.
+- `%restock` localiza únicamente un cofre doble (54 slots) dentro de 3 bloques, recoge las shulkers clasificadas como kits y llena el Ender Chest. Si no caben todas, el sobrante se devuelve al cofre doble de origen.
+- `%limpiar b` mueve todas las cosas del Ender Chest que no coincidan con un kit a slots libres del inventario. Si no caben todas, aborta antes de mover nada. Después camina 32 bloques, las suelta y regresa a `/home zs`.
+- `%limpiar a` requiere un cofre simple (27 slots) dentro de 2 bloques y suficiente capacidad libre para todos los kits que va a mover. Si no caben, aborta antes de moverlos.
 - El texto de aceptación de TPA varía entre servidores. `TPA_ACCEPT_REGEX` puede ajustarse para reconocerlo; la llegada también se detecta por el evento de teletransporte o cambio de posición, así que un texto distinto no bloquea la entrega. `TPA_TIMEOUT_MS` controla el tiempo máximo de espera; si no se detecta aceptación ni teletransporte, el bot cancela la entrega.
 - El servidor puede restringir bots, comandos, TPA o interacción con Ender Chests. Respeta sus reglas y verifica el flujo en un entorno permitido antes de dejarlo funcionando.
 
 ## Configuración opcional
 
-El bot mueve la cabeza cada 60 segundos para mantenerse activo. Configura `ANTI_AFK_INTERVAL_MS` para ajustar el intervalo (mínimo 10000 ms). `HOME_COMMAND_DELAY_MS` controla cuánto espera tras `/home aa` antes de abrir el Ender Chest (por defecto 5000 ms). `SPAWN_X` y `SPAWN_Z` definen las coordenadas X/Z del spawn para la comprobación de distancia (por defecto 0, 0). `KILL_CONFIRM_REGEX` y `KILL_CONFIRM_COMMAND` configuran la aceptación del respawn alternativo. También están documentados `MINECRAFT_HOST`, `MINECRAFT_PORT`, `MINECRAFT_VERSION`, `RECONNECT_DELAY_MS`, `TPA_TIMEOUT_MS` y `TPA_ACCEPT_REGEX` en `.env.example`. Si se omite `MINECRAFT_VERSION`, Mineflayer intenta detectar la versión.
+El bot mueve la cabeza cada 60 segundos para mantenerse activo. Configura `ANTI_AFK_INTERVAL_MS` para ajustar el intervalo (mínimo 10000 ms). `HOME_COMMAND_DELAY_MS` controla cuánto espera tras `/home zs` antes de abrir el Ender Chest (por defecto 5000 ms). `SPAWN_X` y `SPAWN_Z` definen las coordenadas X/Z del spawn para la comprobación de distancia (por defecto 0, 0). También están documentados `MINECRAFT_HOST`, `MINECRAFT_PORT`, `MINECRAFT_VERSION`, `RECONNECT_DELAY_MS`, `TPA_TIMEOUT_MS` y `TPA_ACCEPT_REGEX` en `.env.example`. Si se omite `MINECRAFT_VERSION`, Mineflayer intenta detectar la versión.
 
 ## Desplegar el bot en Railway
 
