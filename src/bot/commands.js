@@ -9,6 +9,7 @@ import {
 } from './enderchest.js';
 import { waitForTpaTeleport } from './tpa.js';
 import { isAtHome, rememberHomePosition } from './home.js';
+import { lookDown } from './orientation.js';
 
 let kitDeliveryInProgress = false;
 let homeOperationInProgress = false;
@@ -70,7 +71,7 @@ async function handleKit(bot, username, user) {
   try {
     await returnHome(bot);
     await prepareKit(bot, user.role);
-    await bot.look(bot.entity.yaw, -Math.PI / 2);
+    await lookDown(bot);
     const requestPosition = bot.entity?.position?.clone();
     const teleported = waitForTpaTeleport(bot, username, requestPosition);
     bot.chat(`/tpa ${username}`);

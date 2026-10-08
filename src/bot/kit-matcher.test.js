@@ -129,6 +129,9 @@ test('drops the carried kit at the current position after the TPA', async () => 
     look: async (yaw, pitch, force) => {
       actions.push(['look', yaw, pitch, force]);
     },
+    waitForTicks: async (ticks) => {
+      actions.push(['wait', ticks]);
+    },
     tossStack: async (item) => {
       assert.equal(item, kit);
       actions.push(['toss']);
@@ -140,6 +143,7 @@ test('drops the carried kit at the current position after the TPA', async () => 
   assert.equal(tossCount, 1);
   assert.deepEqual(actions, [
     ['look', 0.75, -Math.PI / 2, undefined],
+    ['wait', 10],
     ['toss']
   ]);
 });

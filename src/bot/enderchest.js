@@ -1,6 +1,7 @@
 import { ROLES } from './permissions.js';
 import { countKitItems, kitRoleForItem, isShulker, shulkerLabel } from './kit-matcher.js';
 import pathfinderPlugin from 'mineflayer-pathfinder';
+import { lookDown } from './orientation.js';
 
 let enderChestQueue = Promise.resolve();
 const { goals } = pathfinderPlugin;
@@ -268,7 +269,7 @@ export async function deliverKit(bot, username, role) {
   }
   const countBeforeDrop = countCarriedKits(bot, role);
   console.log(`TPA completado para ${username}; soltando ${shulkerLabel(item)} en la posición actual.`);
-  await bot.look(bot.entity.yaw, -Math.PI / 2);
+  await lookDown(bot);
   await bot.tossStack(item);
   await waitForKitDrop(bot, role, countBeforeDrop - item.count);
 }
