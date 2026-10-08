@@ -29,15 +29,13 @@ test('recognizes the requested leader and exact member kit names', () => {
   }), undefined);
 });
 
-test('recognizes the full m.h kit del C.R honorable label', () => {
-  assert.equal(kitRoleForItem({
-    name: 'red_shulker_box',
-    displayName: 'm.h kit del C.R'
-  }), 'miembro_honorable');
-  assert.equal(kitRoleForItem({
-    name: 'red_shulker_box',
-    displayName: 'm.h'
-  }), undefined);
+test('recognizes honorable kits labeled m.h kit del C.R, M.H, or MH', () => {
+  for (const displayName of ['m.h kit del C.R', 'M.H', 'MH']) {
+    assert.equal(kitRoleForItem({
+      name: 'red_shulker_box',
+      displayName
+    }), 'miembro_honorable');
+  }
   assert.equal(kitRoleForItem({
     name: 'red_shulker_box',
     displayName: 'Miembro Honorable'

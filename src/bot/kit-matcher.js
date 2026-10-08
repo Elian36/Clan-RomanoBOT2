@@ -1,5 +1,5 @@
 const ROLE_LABELS = Object.freeze({
-  miembro_honorable: ['m h kit del c r'],
+  miembro_honorable: ['m h kit del c r', 'm h', 'mh'],
   miembro: ['miembro kit del c r'],
   lider: ['lideres kit del c r']
 });
