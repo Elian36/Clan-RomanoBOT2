@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import mineflayer from 'mineflayer';
 import pathfinderPlugin from 'mineflayer-pathfinder';
 import { installCommandHandlers } from './commands.js';
+import { rememberHomePosition } from './home.js';
 
 const { pathfinder } = pathfinderPlugin;
 
@@ -71,6 +72,11 @@ function createBot() {
           if (bot.entity) {
             bot.chat('/home zs');
             console.log('Después del respawn, se envió /home zs.');
+            setTimeout(() => {
+              if (bot.entity) {
+                rememberHomePosition(bot.entity.position);
+              }
+            }, Number(process.env.HOME_COMMAND_DELAY_MS ?? 5000));
           }
         }, Number(process.env.HOME_COMMAND_DELAY_MS ?? 5000));
       }

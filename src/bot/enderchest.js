@@ -268,7 +268,7 @@ export async function deliverKit(bot, username, role) {
   }
   const countBeforeDrop = countCarriedKits(bot, role);
   console.log(`TPA completado para ${username}; soltando ${shulkerLabel(item)} en la posición actual.`);
-  await bot.look(bot.entity.yaw, Math.PI / 2, true);
+  await bot.look(bot.entity.yaw, Math.PI / 2);
   await bot.tossStack(item);
   await waitForKitDrop(bot, role, countBeforeDrop - item.count);
 }

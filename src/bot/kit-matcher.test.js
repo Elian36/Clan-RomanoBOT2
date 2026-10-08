@@ -139,7 +139,7 @@ test('drops the carried kit at the current position after the TPA', async () => 
   await deliverKit(bot, 'wNeofor', 'lider');
   assert.equal(tossCount, 1);
   assert.deepEqual(actions, [
-    ['look', 0.75, Math.PI / 2, true],
+    ['look', 0.75, Math.PI / 2, undefined],
     ['toss']
   ]);
 });

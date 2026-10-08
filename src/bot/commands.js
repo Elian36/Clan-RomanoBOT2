@@ -8,6 +8,7 @@ import {
   restockKits
 } from './enderchest.js';
 import { waitForTpaTeleport } from './tpa.js';
+import { isAtHome, rememberHomePosition } from './home.js';
 
 let kitDeliveryInProgress = false;
 let homeOperationInProgress = false;
@@ -22,8 +23,15 @@ function readHomeDelay() {
 }
 
 async function returnHome(bot) {
+  if (isAtHome(bot.entity?.position)) {
+    return false;
+  }
   bot.chat('/home zs');
   await new Promise((resolve) => setTimeout(resolve, readHomeDelay()));
+  if (bot.entity?.position) {
+    rememberHomePosition(bot.entity.position);
+  }
+  return true;
 }
 
 function isNearSpawn(position) {
@@ -76,23 +84,12 @@ async function handleKit(bot, username, user) {
         tell(bot, username, 'Kit entregado; solicitando respawn para volver rápido a /home zs.');
         return;
       }
-      bot.chat('/home zs');
+      await returnHome(bot);
     } catch (error) {
       tell(bot, username, `El kit se entregó, pero no se pudo iniciar el regreso: ${error.message}`);
       throw error;
     }
-    tell(bot, username, 'Kit entregado; el bot ya está regresando a /home zs.');
-    if (nearSpawn && deliveryPosition) {
-      try {
-        const leadersNotified = await askOnlineLeadersForHelp(bot, username, deliveryPosition);
-        if (!leadersNotified) {
-          tell(bot, username, 'No había líderes conectados para avisar; el bot ya está regresando a /home zs.');
-        }
-      } catch (error) {
-        console.error('No se pudo avisar a los líderes después de entregar un kit:', error);
-        tell(bot, username, 'El kit se entregó y el regreso fue solicitado, pero no se pudo avisar a los líderes.');
-      }
-    }
+    tell(bot, username, 'Kit entregado; el bot ya está en /home zs.');
   } finally {
     kitDeliveryInProgress = false;
   }
@@ -149,6 +146,7 @@ async function executeCommand(bot, username, message, onStop) {
       homeOperationInProgress = true;
       try {
         bot.chat('/sethome zs');
+        rememberHomePosition(bot.entity?.position);
         tell(bot, username, 'Se envió /sethome zs. La home queda en la ubicación actual del bot.');
       } finally {
         homeOperationInProgress = false;
