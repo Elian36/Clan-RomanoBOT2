@@ -70,6 +70,7 @@ async function handleKit(bot, username, user) {
   try {
     await returnHome(bot);
     await prepareKit(bot, user.role);
+    await bot.look(bot.entity.yaw, Math.PI / 2);
     const requestPosition = bot.entity?.position?.clone();
     const teleported = waitForTpaTeleport(bot, username, requestPosition);
     bot.chat(`/tpa ${username}`);
