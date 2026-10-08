@@ -1,5 +1,5 @@
 const DOWNWARD_PITCH = -Math.PI / 2;
-const ROTATION_SETTLE_TICKS = 10;
+const ROTATION_SETTLE_TICKS = 30;
 
 export async function lookDown(bot) {
   if (!bot.entity || typeof bot.look !== 'function' || typeof bot.waitForTicks !== 'function') {

@@ -143,7 +143,7 @@ test('drops the carried kit at the current position after the TPA', async () => 
   assert.equal(tossCount, 1);
   assert.deepEqual(actions, [
     ['look', 0.75, -Math.PI / 2, undefined],
-    ['wait', 10],
+    ['wait', 30],
     ['toss']
   ]);
 });
