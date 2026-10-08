@@ -47,12 +47,12 @@ Los usernames se buscan exactamente como aparecen en Minecraft. Los comandos pue
 | --- | --- |
 | `%yo` | Muestra por privado si el jugador está registrado y su rol. |
 | `%kit` | Solicita el kit asociado a su rol. |
-| `%stock` | Cuenta las cajas de kit disponibles en el Ender Chest. |
+| `%stock` | Cuenta las cajas de kit disponibles en el Ender Chest. Solo para `lider`. |
 | `%add <usuario> <rol>` | Agrega un usuario. Solo para `lider`. |
 | `%role <usuario> <nuevo_rol>` | Cambia el rol. Solo para `lider`. |
 | `%remove <usuario>` | Elimina un usuario. Solo para `lider`. |
 | `%stop` | Desconecta el bot y desactiva la reconexión automática. Solo para `lider`. En Railway, reinicia el servicio manualmente para volver a conectarlo. |
-| `%sethome` | Guarda `/sethome zs` en la ubicación actual del bot. Disponible para usuarios registrados. |
+| `%sethome` | Guarda `/sethome zs` en la ubicación actual del bot. Solo para `lider`. |
 | `%kill` | Mata al bot. Solo para `lider`; al respawnear volverá automáticamente a `/home zs`. |
 | `%restock` | Busca un cofre doble a 3 bloques o menos y repone con sus kits el Ender Chest. Si el Ender Chest se llena, devuelve el sobrante al mismo cofre. Solo para `lider`. |
 | `%limpiar b` | Retira del Ender Chest lo que no sean kits, camina 32 bloques para soltarlo y vuelve a `/home zs`. Solo para `lider`. |

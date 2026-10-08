@@ -116,6 +116,10 @@ async function executeCommand(bot, username, message, onStop) {
       await handleKit(bot, username, user);
       return;
     case 'stock': {
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede consultar el stock.');
+        return;
+      }
       if (kitDeliveryInProgress) {
         tell(bot, username, 'Hay una entrega de kit en curso. Inténtalo de nuevo más tarde.');
         return;
@@ -136,6 +140,10 @@ async function executeCommand(bot, username, message, onStop) {
       return;
     }
     case 'sethome':
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede configurar la home.');
+        return;
+      }
       if (args.length !== 0) {
         tell(bot, username, 'Uso: %sethome');
         return;
