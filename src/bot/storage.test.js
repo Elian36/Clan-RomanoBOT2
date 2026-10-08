@@ -22,8 +22,8 @@ function createWindow(containerSize) {
 }
 
 function createBot({ enderChest, chests = [] }) {
-  const blocks = chests.map(({ name = 'chest', window, x = 1 }) => {
-    const block = { name, position: { x, y: 64, z: 0 } };
+  const blocks = chests.map(({ name = 'chest', window, x = 1, z = 0 }) => {
+    const block = { name, position: { x, y: 64, z } };
     block.window = window;
     return block;
   });
@@ -55,7 +55,11 @@ function createBot({ enderChest, chests = [] }) {
       return blocks.map((block) => block.position);
     },
     blockAt(position) {
-      return blocks.find((block) => block.position === position);
+      return blocks.find((block) => (
+        block.position.x === position.x
+        && block.position.y === position.y
+        && block.position.z === position.z
+      ));
     },
     async openContainer(block) {
       this.currentWindow = block.window;
@@ -86,6 +90,15 @@ function createBot({ enderChest, chests = [] }) {
       if (destinationSlot >= window.inventoryStart) {
         const inventorySlot = destinationSlot - window.inventoryStart + this.inventory.inventoryStart;
         this.inventory.slots[inventorySlot] = { ...item };
+      }
+    },
+    async putAway(sourceSlot) {
+      const window = this.currentWindow;
+      const destinationSlot = sourceSlot < window.inventoryStart
+        ? window.firstEmptySlotRange(window.inventoryStart, window.inventoryEnd)
+        : window.firstEmptySlotRange(0, window.inventoryStart);
+      if (destinationSlot !== null) {
+        await this.moveSlotItem(sourceSlot, destinationSlot);
       }
     },
     async tossStack(item) {
@@ -179,6 +192,33 @@ test('clean A moves every kit and only opens the selected chest once for inspect
   assert.equal(openCounts.get(ender), 2);
 });
 
+test('clean A skips double-chest halves instead of opening them while searching for a simple chest', async () => {
+  const ender = createWindow(27);
+  ender.slots[0] = kit('Lideres kit del C.R');
+  const doubleLeft = createWindow(54);
+  const doubleRight = createWindow(54);
+  const destination = createWindow(27);
+  const bot = createBot({
+    enderChest: ender,
+    chests: [
+      { window: doubleLeft, x: 1 },
+      { window: doubleRight, x: 2 },
+      { window: destination, x: 0, z: 1 }
+    ]
+  });
+  const openCounts = new Map();
+  const openContainer = bot.openContainer.bind(bot);
+  bot.openContainer = async (block) => {
+    openCounts.set(block.window, (openCounts.get(block.window) ?? 0) + 1);
+    return openContainer(block);
+  };
+
+  assert.equal(await moveAllKitsToSingleChest(bot), 1);
+  assert.equal(openCounts.get(doubleLeft), undefined);
+  assert.equal(openCounts.get(doubleRight), undefined);
+  assert.equal(openCounts.get(destination), 2);
+});
+
 test('clean A does not remove kits when no nearby simple chest has enough free slots', async () => {
   const ender = createWindow(27);
   ender.slots[0] = kit('Lideres kit del C.R');
@@ -188,6 +228,18 @@ test('clean A does not remove kits when no nearby simple chest has enough free s
 
   await assert.rejects(moveAllKitsToSingleChest(bot), /más espacio/);
   assert.equal(ender.slots[0].displayName, 'Lideres kit del C.R');
+});
+
+test('clean A reports a rejected source transfer and leaves kits in the Ender Chest', async () => {
+  const ender = createWindow(27);
+  ender.slots[0] = kit('Lideres kit del C.R');
+  const destination = createWindow(27);
+  const bot = createBot({ enderChest: ender, chests: [{ window: destination }] });
+  bot.putAway = async () => {};
+
+  await assert.rejects(moveAllKitsToSingleChest(bot), /no confirmó el traslado/);
+  assert.equal(ender.slots[0].displayName, 'Lideres kit del C.R');
+  assert.equal(destination.slots[0], null);
 });
 
 test('clean B drops non-kit items and leaves recognized kits in the ender chest', async () => {

@@ -26,6 +26,23 @@ function containerItems(window) {
   return window.slots.slice(0, end).flatMap((item, slot) => item ? [{ item, slot }] : []);
 }
 
+function itemCountForRole(items, role) {
+  return items
+    .filter((item) => kitRoleForItem(item) === role)
+    .reduce((count, item) => count + (item.count ?? 1), 0);
+}
+
+function isSingleChest(bot, block) {
+  const chestType = block.getProperties?.().type;
+  if (chestType) return chestType === 'single';
+
+  const { x, y, z } = block.position;
+  return ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([offsetX, offsetZ]) => {
+    const neighbor = bot.blockAt({ x: x + offsetX, y, z: z + offsetZ });
+    return neighbor?.name === block.name;
+  });
+}
+
 async function withContainer(bot, block, action) {
   const window = await bot.openContainer(block);
   try {
@@ -52,32 +69,26 @@ async function findNearbyChest(bot, { radius, slotCount, description, requiredSl
     if (!block || (block.name !== 'chest' && block.name !== 'trapped_chest')) {
       continue;
     }
-    try {
-      const capacity = await withContainer(bot, block, (window) => {
-        if (window.inventoryStart !== slotCount) return null;
-        const freeSlots = Array.from({ length: window.inventoryStart }, (_, slot) => slot)
-          .filter((slot) => !window.slots[slot]).length;
-        return { block, freeSlots };
-      });
-      if (capacity) {
-        foundMatchingChest = true;
-        largestAvailableSlotCount = Math.max(largestAvailableSlotCount, capacity.freeSlots);
-        if (capacity.freeSlots >= requiredSlots) return capacity;
-      }
-    } catch (error) {
-      failures.push(error.message);
+    if (slotCount === 27 && !isSingleChest(bot, block)) {
+      continue;
+    }
+    const capacity = await withContainer(bot, block, (window) => {
+      if (window.inventoryStart !== slotCount) return null;
+      const freeSlots = Array.from({ length: window.inventoryStart }, (_, slot) => slot)
+        .filter((slot) => !window.slots[slot]).length;
+      return { block, freeSlots };
+    });
+    if (capacity) {
+      foundMatchingChest = true;
+      largestAvailableSlotCount = Math.max(largestAvailableSlotCount, capacity.freeSlots);
+      if (capacity.freeSlots >= requiredSlots) return capacity;
     }
   }
 
   const capacityDetails = foundMatchingChest && requiredSlots
     ? ` El cofre simple con más espacio tiene ${largestAvailableSlotCount} slots libres y se necesitan ${requiredSlots}.`
     : '';
-  const failureDetails = failures.length ? ` No se pudieron abrir algunos cofres: ${failures.slice(0, 2).join('; ')}.` : '';
-  throw new Error(`No se encontró un ${description} accesible a ${radius} bloques o menos con espacio suficiente.${capacityDetails}${failureDetails}`);
-}
-
-function inventorySlotInWindow(bot, window, item) {
-  return window.inventoryStart + item.slot - bot.inventory.inventoryStart;
+  throw new Error(`No se encontró un ${description} accesible a ${radius} bloques o menos con espacio suficiente.${capacityDetails}`);
 }
 
 async function moveContainerKitsToInventory(bot, window) {
@@ -86,10 +97,17 @@ async function moveContainerKitsToInventory(bot, window) {
     const source = containerItems(window).find(({ item }) => kitRoleForItem(item));
     if (!source) return moved;
 
-    const destination = window.firstEmptySlotRange(window.inventoryStart, window.inventoryEnd);
-    if (destination === null) return moved;
-
-    await bot.moveSlotItem(source.slot, destination);
+    if (window.firstEmptySlotRange(window.inventoryStart, window.inventoryEnd) === null) {
+      return moved;
+    }
+    const role = kitRoleForItem(source.item);
+    const inventoryCount = itemCountForRole(window.slots.slice(window.inventoryStart, window.inventoryEnd), role);
+    await bot.putAway(source.slot);
+    const remainingSource = window.slots[source.slot];
+    const updatedInventoryCount = itemCountForRole(window.slots.slice(window.inventoryStart, window.inventoryEnd), role);
+    if (remainingSource || updatedInventoryCount < inventoryCount + (source.item.count ?? 1)) {
+      throw new Error(`El servidor no confirmó el traslado de ${shulkerLabel(source.item)} al inventario.`);
+    }
     moved += 1;
   }
 }
@@ -97,13 +115,23 @@ async function moveContainerKitsToInventory(bot, window) {
 async function moveInventoryKitsToContainer(bot, window) {
   let moved = 0;
   while (true) {
-    const item = bot.inventory.items().find((candidate) => kitRoleForItem(candidate));
-    if (!item) return moved;
+    const source = window.slots
+      .slice(window.inventoryStart, window.inventoryEnd)
+      .find((item) => item && kitRoleForItem(item));
+    if (!source) return moved;
 
-    const destination = window.firstEmptySlotRange(0, window.inventoryStart);
-    if (destination === null) return moved;
-
-    await bot.moveSlotItem(inventorySlotInWindow(bot, window, item), destination);
+    if (window.firstEmptySlotRange(0, window.inventoryStart) === null) {
+      return moved;
+    }
+    const role = kitRoleForItem(source);
+    const containerCount = itemCountForRole(window.slots.slice(0, window.inventoryStart), role);
+    const sourceSlot = window.slots.indexOf(source, window.inventoryStart);
+    await bot.putAway(sourceSlot);
+    const remainingInventoryItem = window.slots[sourceSlot];
+    const updatedContainerCount = itemCountForRole(window.slots.slice(0, window.inventoryStart), role);
+    if (remainingInventoryItem || updatedContainerCount < containerCount + (source.count ?? 1)) {
+      throw new Error(`El servidor no confirmó que ${shulkerLabel(source)} llegara al cofre simple.`);
+    }
     moved += 1;
   }
 }
