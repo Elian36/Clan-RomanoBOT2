@@ -120,16 +120,26 @@ test('counts carried shulkers by their role and reports unclassified shulkers', 
 test('drops the carried kit at the current position after the TPA', async () => {
   const kit = { name: 'purple_shulker_box', displayName: 'Lideres kit del C.R', count: 1, slot: 36 };
   let tossCount = 0;
+  const actions = [];
   const bot = {
+    entity: { yaw: 0.75 },
     inventory: {
       items: () => tossCount === 0 ? [kit] : []
     },
+    look: async (yaw, pitch, force) => {
+      actions.push(['look', yaw, pitch, force]);
+    },
     tossStack: async (item) => {
       assert.equal(item, kit);
+      actions.push(['toss']);
       tossCount += 1;
     }
   };
 
   await deliverKit(bot, 'wNeofor', 'lider');
   assert.equal(tossCount, 1);
+  assert.deepEqual(actions, [
+    ['look', 0.75, Math.PI / 2, true],
+    ['toss']
+  ]);
 });

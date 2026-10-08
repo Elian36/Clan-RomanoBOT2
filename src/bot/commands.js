@@ -1,4 +1,4 @@
-import { addUser, getLeaders, getUser, removeUser, ROLES, updateUserRole } from './permissions.js';
+import { addUser, getUser, removeUser, ROLES, updateUserRole } from './permissions.js';
 import {
   countKits,
   deliverKit,
@@ -35,23 +35,7 @@ function isNearSpawn(position) {
   if (!position) {
     return false;
   }
-  return Math.hypot(position.x - spawnX, position.z - spawnZ) < 20000;
-}
-
-async function askOnlineLeadersForHelp(bot, username, position) {
-  const leaders = await getLeaders();
-  const onlineLeaders = leaders.filter(({ username: leader }) => (
-    /^[A-Za-z0-9_]{1,16}$/.test(leader)
-    && bot.players[leader]?.entity
-  ));
-
-  if (onlineLeaders.length === 0) return false;
-
-  const message = `El bot necesita ayuda después de entregar un kit. Posición: ${Math.floor(position.x)}, ${Math.floor(position.y)}, ${Math.floor(position.z)}.`;
-  for (const leader of onlineLeaders) {
-    bot.chat(`/msg ${leader.username} ${message}`);
-  }
-  return true;
+  return Math.hypot(position.x - spawnX, position.z - spawnZ) < 15000;
 }
 
 function tell(bot, username, message) {
@@ -87,9 +71,14 @@ async function handleKit(bot, username, user) {
     const deliveryPosition = bot.entity?.position?.clone();
     const nearSpawn = isNearSpawn(deliveryPosition);
     try {
+      if (nearSpawn) {
+        bot.chat('/kill');
+        tell(bot, username, 'Kit entregado; solicitando respawn para volver rápido a /home zs.');
+        return;
+      }
       bot.chat('/home zs');
     } catch (error) {
-      tell(bot, username, `El kit se entregó, pero no se pudo solicitar el regreso a /home zs: ${error.message}`);
+      tell(bot, username, `El kit se entregó, pero no se pudo iniciar el regreso: ${error.message}`);
       throw error;
     }
     tell(bot, username, 'Kit entregado; el bot ya está regresando a /home zs.');
