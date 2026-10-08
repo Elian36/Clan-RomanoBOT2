@@ -123,11 +123,12 @@ test('drops the carried kit at the current position after the TPA', async () => 
   const actions = [];
   const bot = {
     entity: { yaw: 0.75 },
+    physics: { pitchSpeed: 3 },
     inventory: {
       items: () => tossCount === 0 ? [kit] : []
     },
     look: async (yaw, pitch, force) => {
-      actions.push(['look', yaw, pitch, force]);
+      actions.push(['look', yaw, pitch, force, bot.physics.pitchSpeed]);
     },
     waitForTicks: async (ticks) => {
       actions.push(['wait', ticks]);
@@ -141,9 +142,10 @@ test('drops the carried kit at the current position after the TPA', async () => 
 
   await deliverKit(bot, 'wNeofor', 'lider');
   assert.equal(tossCount, 1);
+  assert.equal(bot.physics.pitchSpeed, 3);
   assert.deepEqual(actions, [
-    ['look', 0.75, -Math.PI / 2, undefined],
-    ['wait', 30],
+    ['look', 0.75, -Math.PI / 2, undefined, Math.PI / 0.05],
+    ['wait', 24],
     ['toss']
   ]);
 });
