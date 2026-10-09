@@ -9,6 +9,11 @@ import {
 } from './enderchest.js';
 import { waitForTpaTeleport } from './tpa.js';
 import { isAtHome, rememberHomePosition } from './home.js';
+import {
+  formatCommandHistoryEntry,
+  getCommandHistory,
+  recordCommandUse
+} from './activity-log.js';
 
 let kitDeliveryInProgress = false;
 let homeOperationInProgress = false;
@@ -95,12 +100,24 @@ async function handleKit(bot, username, user) {
   }
 }
 
-async function executeCommand(bot, username, message, onStop) {
+async function executeCommand(bot, username, message, onStop, playerPosition) {
   const { name, args } = parseCommand(message);
   const user = await getUser(username);
   if (!user) {
     tell(bot, username, 'No tienes permisos para usar este bot.');
     return;
+  }
+
+  try {
+    await recordCommandUse({
+      username,
+      role: user.role,
+      command: message,
+      position: playerPosition
+    });
+  } catch (error) {
+    console.error(`No se pudo registrar el comando de ${username}:`, error);
+    tell(bot, username, 'Aviso: no se pudo guardar este uso en el historial de Supabase.');
   }
 
   switch (name) {
@@ -136,6 +153,26 @@ async function executeCommand(bot, username, message, onStop) {
         ? ` No encontré shulkers; revisé ${carriedShulkers} en inventario y ${enderChestSlots} slots del Ender Chest (${enderChestShulkers} shulkers).`
         : ` Total: ${totalShulkers} shulkers (${carriedShulkers} en inventario, ${enderChestShulkers} en Ender Chest).`;
       tell(bot, username, `Stock: lider ${counts.lider}, miembro_honorable ${counts.miembro_honorable}, miembro ${counts.miembro}.${unrecognized}${scanDetails}`);
+      return;
+    }
+    case 'registro': {
+      if (user.role !== 'lider') {
+        tell(bot, username, 'Solo un lider puede consultar el historial de uso.');
+        return;
+      }
+      if (args.length !== 1) {
+        tell(bot, username, 'Uso: %registro <miembro>');
+        return;
+      }
+      const history = await getCommandHistory(args[0]);
+      if (history.length === 0) {
+        tell(bot, username, `${args[0]} todavía no tiene comandos registrados.`);
+        return;
+      }
+      tell(bot, username, `Últimos ${history.length} comandos de ${args[0]} (fecha UTC | rol | comando | X,Y,Z):`);
+      for (const entry of history) {
+        tell(bot, username, formatCommandHistoryEntry(entry));
+      }
       return;
     }
     case 'sethome':
@@ -270,7 +307,7 @@ async function executeCommand(bot, username, message, onStop) {
       bot.chat('/kill');
       return;
     default:
-      tell(bot, username, 'Comando no reconocido. Usa %yo, %kit, %stock, %sethome, %kill, %restock, %limpiar a|b o %stop.');
+      tell(bot, username, 'Comando no reconocido. Usa %yo, %kit, %stock, %registro <miembro>, %sethome, %kill, %restock, %limpiar a|b o %stop.');
   }
 }
 
@@ -281,7 +318,7 @@ export function installCommandHandlers(bot, onStop) {
     }
 
     try {
-      await executeCommand(bot, username, message, onStop);
+      await executeCommand(bot, username, message, onStop, bot.players[username]?.entity?.position);
     } catch (error) {
       console.error(`Error procesando comando de ${username}:`, error);
       tell(bot, username, `Error: ${error.message}`);

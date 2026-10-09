@@ -48,6 +48,7 @@ Los usernames se buscan exactamente como aparecen en Minecraft. Los comandos pue
 | `%yo` | Muestra por privado si el jugador está registrado y su rol. |
 | `%kit` | Solicita el kit asociado a su rol. |
 | `%stock` | Cuenta las cajas de kit disponibles en el Ender Chest. Solo para `lider`. |
+| `%registro <miembro>` | Muestra los últimos 10 comandos registrados de ese jugador con fecha/hora UTC, rol y coordenadas. Solo para `lider`. |
 | `%add <usuario> <rol>` | Agrega un usuario. Solo para `lider`. |
 | `%role <usuario> <nuevo_rol>` | Cambia el rol. Solo para `lider`. |
 | `%remove <usuario>` | Elimina un usuario. Solo para `lider`. |
@@ -61,6 +62,8 @@ Los usernames se buscan exactamente como aparecen en Minecraft. Los comandos pue
 Roles: `lider`, `miembro_honorable`, `miembro`.
 
 ## Preparación de kits y TPA
+
+Para guardar el historial en Supabase, vuelve a ejecutar [`supabase/schema.sql`](./supabase/schema.sql) en el SQL Editor; crea la tabla protegida `command_history` sin borrar los usuarios existentes. Desde entonces se registran los comandos `%` enviados por cualquier usuario registrado, junto con su rol y coordenadas disponibles en ese momento. `%registro <miembro>` muestra hasta los 10 usos más recientes; las fechas se presentan en UTC. El comando está limitado a líderes porque expone ubicaciones. Los registros empiezan al aplicar el esquema y no incluyen actividad anterior.
 
 - El bot debe tener cerca (máximo 32 bloques) un Ender Chest accesible con el kit guardado dentro.
 - Guarda cada kit como una caja shulker con estas etiquetas visibles/NBT: líder `Lideres kit del C.R`; miembro `Miembro kit del C.R`; honorable `m.h kit del C.R`, `M.H` o `MH`. No importa el uso de mayúsculas ni puntos en los nombres de kit. `miembro_honorable` sigue siendo el nombre del rol en la base de datos. Cada caja contada equivale a una entrega. Las shulkers sin etiqueta de rol no se asignan a ningún kit.

@@ -9,8 +9,8 @@
   },
   "scripts": {
     "start": "node src/bot/index.js",
-    "check": "node --check src/config/supabase.js && node --check src/bot/permissions.js && node --check src/bot/kit-matcher.js && node --check src/bot/home.js && node --check src/bot/orientation.js && node --check src/bot/enderchest.js && node --check src/bot/tpa.js && node --check src/bot/commands.js && node --check src/bot/index.js && node --check src/bot/kit-matcher.test.js && node --check src/bot/home.test.js && node --check src/bot/storage.test.js",
-    "test": "node --test src/bot/kit-matcher.test.js src/bot/home.test.js src/bot/tpa.test.js src/bot/storage.test.js"
+    "check": "node --check src/config/supabase.js && node --check src/bot/permissions.js && node --check src/bot/kit-matcher.js && node --check src/bot/home.js && node --check src/bot/orientation.js && node --check src/bot/activity-log-format.js && node --check src/bot/activity-log.js && node --check src/bot/enderchest.js && node --check src/bot/tpa.js && node --check src/bot/commands.js && node --check src/bot/index.js && node --check src/bot/kit-matcher.test.js && node --check src/bot/home.test.js && node --check src/bot/activity-log-format.test.js && node --check src/bot/storage.test.js",
+    "test": "node --test src/bot/kit-matcher.test.js src/bot/home.test.js src/bot/activity-log-format.test.js src/bot/tpa.test.js src/bot/storage.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
