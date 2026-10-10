@@ -119,6 +119,15 @@ Usa una sola instancia del bot para esta cuenta de Minecraft. Antes de arrancarl
    sudo loginctl enable-linger "$USER"
    ```
 
+   Para crear un acceso directo ejecutable en el escritorio y poder iniciar o reiniciar el bot con doble clic:
+
+   ```bash
+   chmod +x scripts/install-desktop-launcher.sh
+   ./scripts/install-desktop-launcher.sh
+   ```
+
+   Después, abre **Clan Romano Bot** desde el escritorio. Si el entorno gráfico pregunta, elige **Permitir ejecutar** / **Allow Launching**. El acceso directo abre una terminal para mostrar el estado y cualquier error.
+
 5. Consulta los logs y el estado:
 
    ```bash
