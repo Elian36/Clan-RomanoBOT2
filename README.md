@@ -27,11 +27,13 @@ Bot de Mineflayer para `8b8t.me:25565`, con comandos de chat autorizados mediant
 
 3. En Supabase, abre el SQL Editor y ejecuta [`supabase/schema.sql`](./supabase/schema.sql). El esquema agrega a `wNeofor` como líder inicial si todavía no existe.
 
-4. Inicia el bot:
+4. Inicia el bot desde la carpeta del proyecto:
 
    ```powershell
-   npm start
+   node bot.js
    ```
+
+   También puedes usar `npm start`, que ejecuta el mismo archivo.
 
    Para comprobar sintaxis:
 

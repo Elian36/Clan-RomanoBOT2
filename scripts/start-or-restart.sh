@@ -52,7 +52,7 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory="$PROJECT_DIR"
-ExecStart="$NODE_BIN" src/bot/index.js
+ExecStart="$NODE_BIN" bot.js
 Restart=always
 RestartSec=10
 KillSignal=SIGTERM
